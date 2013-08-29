@@ -32,7 +32,7 @@ architecture BerlekampMassey of BerlekampMassey is
       multiplied : out key_equation);
   end component;
 
-  type   states is (idle, prepare_discrepancy, calculate_discrepancy, set_lambda, prepare_polynomials, update_signals, set_done);
+  type   states is (reset_FSM, idle, prepare_discrepancy, calculate_discrepancy, set_l, prepare_polynomials, update_polynomials, update_variables, sink_in_update, set_done);
   signal current_state, next_state : states;
 
   signal discrepancy         : field_element;
@@ -83,7 +83,7 @@ begin
   begin
     if clock'event and clock = '1' then
       if reset = '1' then
-        current_state <= idle;
+        current_state <= reset_FSM;
       else
         current_state <= next_state;
       end if;
@@ -93,6 +93,9 @@ begin
   process(current_state, enable, discrepancy_done, index)
   begin
     case current_state is
+      when reset_FSM =>
+        next_state <= idle;
+        
       when idle =>
         if enable = '1' then
           next_state <= prepare_discrepancy;
@@ -105,19 +108,25 @@ begin
         
       when calculate_discrepancy =>
         if discrepancy_done = '1' then
-          next_state <= set_lambda;
+          next_state <= set_l;
         else
           next_state <= prepare_discrepancy;
         end if;
         
-      when set_lambda =>
+      when set_l =>
         next_state <= prepare_polynomials;
         
       when prepare_polynomials =>
-        next_state <= update_signals;
+        next_state <= update_polynomials;
         
-      when update_signals =>
-        if index = (T2 - 1) then
+      when update_polynomials =>
+        next_state <= update_variables;
+        
+      when update_variables =>
+        next_state <= sink_in_update;
+        
+      when sink_in_update =>
+        if index = T2 then
           next_state <= set_done;
         else
           next_state <= prepare_discrepancy;
@@ -127,7 +136,7 @@ begin
         next_state <= idle;
 
       when others =>
-        next_state <= idle;
+        next_state <= reset_FSM;
         
     end case;
   end process;
@@ -136,6 +145,30 @@ begin
   begin
     if clock'event and clock = '1' then
       case current_state is
+        when reset_FSM =>
+          done              <= '0';
+          discrepancy_done  <= '0';
+          lambda            <= '0';
+          L                 <= 0;
+          index             <= 0;
+          double_L          <= 0;
+          discrepancy_index <= 0;
+          discrepancy       <= (others => '0');
+          discrepancy_A     <= (others => '0');
+          discrepancy_B     <= (others => '0');
+          sigma_A           <= (others => '0');
+          sigmaX_A          <= (others => '0');
+          equation          <= (others => (others => '0'));
+          sigma             <= (others => (others => '0'));
+          B                 <= (others => (others => '0'));
+          sigma_B           <= (others => (others => '0'));
+          sigmaX_B          <= (others => (others => '0'));
+          temp_sigma        <= (others => (others => '0'));
+
+          sigma(0) <= (0 => '1', others => '0');
+          B(0)     <= (0 => '1', others => '0');
+          theta    <= (0 => '1', others => '0');
+
         when idle =>
           done              <= '0';
           discrepancy_done  <= '0';
@@ -175,7 +208,7 @@ begin
           discrepancy <= discrepancy xor discrepancy_product;
           double_L    <= L + L;
           
-        when set_lambda =>
+        when set_l =>
           if (discrepancy /= "00000000") and (double_L <= index) then
             lambda <= '1';
           else
@@ -192,7 +225,7 @@ begin
           sigmaX_A <= discrepancy;
           sigmaX_B <= B;
           
-        when update_signals =>
+        when update_polynomials =>
           sigma(0) <= sigma_product(0);
           sigma(1) <= sigma_product(1) xor sigmaX_product(0);
           sigma(2) <= sigma_product(2) xor sigmaX_product(1);
@@ -213,10 +246,6 @@ begin
             B(6) <= temp_sigma(6);
             B(7) <= temp_sigma(7);
             B(8) <= temp_sigma(8);
-
-            theta <= discrepancy;
-            L     <= index - L + 1;
-            
           elsif lambda = '0' then
             B(0) <= (others => '0');
             B(1) <= B(0);
@@ -227,12 +256,21 @@ begin
             B(6) <= B(5);
             B(7) <= B(6);
             B(8) <= B(7);
-
+          end if;
+          
+        when update_variables =>
+          if lambda = '1' then
+            theta <= discrepancy;
+            L     <= index - L + 1;
+            
+          elsif lambda = '0' then
             theta <= theta;
             L     <= L;
           end if;
 
-          index             <= index + 1;
+          index <= index + 1;
+          
+        when sink_in_update =>
           discrepancy       <= (others => '0');
           discrepancy_index <= 0;
           

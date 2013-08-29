@@ -52,4 +52,4 @@ add wave -label "sigma_derived_evaluated" /Chien_Forney_tb/CF/sigma_derived_eval
 run 65000 ns
 #wave zoom full
 
-#quit -f
+quit -f

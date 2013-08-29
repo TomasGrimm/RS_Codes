@@ -54,6 +54,6 @@ add wave -label cf_internal /RS_decoder_tb/cf_internal
 #add wave -label "multiplications" /RS_decoder_tb/decoder/syndrome_module/multiplications
 
 run 70000 ns
-wave zoom full
+#wave zoom full
 
-#quit -f
+quit -f

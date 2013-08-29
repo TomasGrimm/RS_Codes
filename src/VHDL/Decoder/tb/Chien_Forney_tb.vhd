@@ -25,9 +25,9 @@ architecture Chien_Forney_tb of Chien_Forney_tb is
   signal erl                : key_equation;
   signal est                : codeword_array;
 
-  file fd_syn_in : text open read_mode is "./comparison/syndrome_vhdl.txt";
-  file fd_bm_in : text open read_mode is "./comparison/bm_vhdl.txt";
-  file fd_out : text open write_mode is "./comparison/chien_vhdl.txt";
+  file fd_syn_in : text open read_mode is "../../Tests/syndrome_vhdl.txt";
+  file fd_bm_in : text open read_mode is "../../Tests/bm_vhdl.txt";
+  file fd_out : text open write_mode is "../../Tests/chien_vhdl.txt";
   
 begin
   CF : Chien_Forney
