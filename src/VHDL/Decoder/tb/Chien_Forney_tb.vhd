@@ -16,29 +16,32 @@ architecture Chien_Forney_tb of Chien_Forney_tb is
       syndrome      : in syndrome_vector;
       error_locator : in key_equation;
 
-      done               : out std_logic;
-      estimated_codeword : out codeword_array);
+      done              : out std_logic;
+      errors_magnitudes : out errors_values;
+      errors_indices    : out errors_locations);
   end component;
 
   signal clk, rst, ena, dne : std_logic;
   signal syn                : syndrome_vector;
   signal erl                : key_equation;
-  signal est                : codeword_array;
+  signal err_mag            : errors_values;
+  signal err_ind            : errors_locations;
 
   file fd_syn_in : text open read_mode is "./comparison/syndrome_vhdl.txt";
-  file fd_bm_in : text open read_mode is "./comparison/bm_vhdl.txt";
-  file fd_out : text open write_mode is "./comparison/chien_vhdl.txt";
+  file fd_bm_in  : text open read_mode is "./comparison/bm_vhdl.txt";
+  file fd_out    : text open write_mode is "./comparison/chien_vhdl.txt";
   
 begin
   CF : Chien_Forney
     port map (
-      clock              => clk,
-      reset              => rst,
-      enable             => ena,
-      syndrome           => syn,
-      error_locator      => erl,
-      done               => dne,
-      estimated_codeword => est);
+      clock             => clk,
+      reset             => rst,
+      enable            => ena,
+      syndrome          => syn,
+      error_locator     => erl,
+      done              => dne,
+      errors_magnitudes => err_mag,
+      errors_indices    => err_ind);
 
   process
   begin
@@ -58,7 +61,7 @@ begin
 
   process
     variable line1, line2 : line;
-    variable value : field_element;
+    variable value        : field_element;
   begin
     ena <= '0';
     syn <= (others => (others => '0'));
@@ -130,7 +133,7 @@ begin
     readline (fd_syn_in, line1);
     read (line1, value);
     syn(15) <= value;
-    
+
     -- error locator polynomial (Berlekamp output)
     readline (fd_bm_in, line2);
     read (line2, value);
@@ -173,16 +176,16 @@ begin
     wait;
   end process;
 
-  process
-    variable line_num : line;
-    variable counter : integer := 0;
-  begin
-    wait until dne = '1';
+  --process
+  --  variable line_num : line;
+  --  variable counter  : integer := 0;
+  --begin
+  --  wait until dne = '1';
 
-    while counter < N_LENGTH loop
-      write(line_num, est(counter));
-      writeline(fd_out, line_num);
-      counter := counter + 1;
-    end loop;
-  end process;
+  --  while counter < N_LENGTH loop
+  --    write(line_num, est(counter));
+  --    writeline(fd_out, line_num);
+  --    counter := counter + 1;
+  --  end loop;
+  --end process;
 end architecture;

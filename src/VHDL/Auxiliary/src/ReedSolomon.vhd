@@ -10,12 +10,14 @@ package ReedSolomon is
 
   subtype field_element is std_logic_vector(SYMBOL_LENGTH - 1 downto 0);
 
-  type generator_polynomial is array (0 to T2 - 1) of field_element;
-  type codeword_array is array (0 to N_LENGTH - 1) of field_element;  -- array for codewords
-  type syndrome_vector is array (0 to T2 - 1) of field_element;  -- the type for the output vector from the syndrome module
-  type key_equation is array (0 to T) of field_element;  -- equation that locates the errors' positions
-  type omega_array is array (0 to T2 + T - 1) of field_element;  -- omega = syndrome * key_equation
-  
+  type generator_polynomial is array (0 to T2 - 1)       of field_element;
+  type codeword_array       is array (0 to N_LENGTH - 1) of field_element;  -- array for codewords
+  type syndrome_vector      is array (0 to T2 - 1)       of field_element;  -- the type for the output vector from the syndrome module
+  type key_equation         is array (0 to T)            of field_element;  -- equation that locates the errors' positions
+  type omega_array          is array (0 to T2 + T - 1)   of field_element;  -- omega = syndrome * key_equation
+  type errors_values        is array (0 to T - 1)        of field_element;
+  type errors_locations     is array (0 to T - 1)        of integer;
+
   constant last_element : field_element;
   constant all_zeros    : field_element;
   constant alpha_zero   : field_element;

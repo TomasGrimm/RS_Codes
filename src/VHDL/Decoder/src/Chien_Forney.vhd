@@ -10,8 +10,9 @@ entity Chien_Forney is
     syndrome      : in syndrome_vector;
     error_locator : in key_equation;
 
-    done               : out std_logic;  -- signals when the search is done
-    estimated_codeword : out codeword_array);
+    done              : out std_logic;  -- signals when the search is done
+    errors_magnitudes : out errors_values;
+    errors_indices    : out errors_locations);
 end entity;
 
 architecture Chien_Forney of Chien_Forney is
@@ -44,14 +45,14 @@ architecture Chien_Forney of Chien_Forney is
   signal mult2_out               : field_element;
   signal omega_evaluated         : field_element;
   signal sigma_derived_evaluated : field_element;
-  signal sigma_derived_inverted  : field_element;
   signal syndrome_element        : field_element;
 
-  signal codeword_index : integer;
+  signal codeword_index   : integer;
+  signal errors_counter   : integer;
   signal inverter_counter : integer;
-  signal key_counter    : integer;
-  signal omega_index    : integer;
-  signal syndrome_index : integer;
+  signal key_counter      : integer;
+  signal omega_index      : integer;
+  signal syndrome_index   : integer;
 
   signal omega_step    : key_equation;
   signal sigma_derived : key_equation;
@@ -91,7 +92,7 @@ begin
     end if;
   end process;
 
-  process(current_state, enable, syndrome_index, is_last_element, is_root, omega_index, codeword_index, key_counter, mult1_out)
+  process(current_state, enable, syndrome_index, is_last_element, is_root, omega_index, codeword_index, key_counter, inverter_counter)
   begin
     case current_state is
       when idle =>
@@ -183,8 +184,9 @@ begin
     if clock'event and clock = '1' then
       case current_state is
         when idle =>
-          done               <= '0';
-          estimated_codeword <= (others => (others => '0'));
+          done              <= '0';
+          errors_magnitudes <= (others => (others => '0'));
+          errors_indices    <= (others => 0);
 
           alpha            <= last_element;  -- initialize with a^(n-2) to return to a^0 on the first time to enter "set_alpha"
           key_evaluated    <= (others => '0');
@@ -197,19 +199,20 @@ begin
 
           sigma_derived           <= (others => (others => '0'));
           sigma_derived_evaluated <= (others => '0');
-          sigma_derived_inverted  <= (others => '0');
 
-          codeword_index <= 0;
+          codeword_index   <= 0;
           inverter_counter <= 0;
-          omega_index    <= T2 - 1;
-          syndrome_index <= 0;
-          key_counter    <= 0;
+          omega_index      <= T2 - 1;
+          syndrome_index   <= 0;
+          key_counter      <= 0;
+          errors_counter   <= 0;
 
           omega <= (others => (others => '0'));
 
           is_last_element <= '0';
           is_root         <= '0';
-
+          
+        when prepare_omega =>
           -- the derivative of a polynomial with coefficients 
           -- from an extension field eliminate the terms 
           -- multiplied by an even power of x
@@ -217,8 +220,7 @@ begin
           sigma_derived(2) <= error_locator(3);
           sigma_derived(4) <= error_locator(5);
           sigma_derived(6) <= error_locator(7);
-          
-        when prepare_omega =>
+
           syndrome_element <= syndrome(syndrome_index);
           
         when calculate_omega =>
@@ -305,8 +307,8 @@ begin
           sigma_derived_evaluated <= sigma_derived_evaluated xor sigma_derived(0);
 
           inverter_counter <= 0;
-          mult2_a <= (0 => '1', others => '0');
-          mult2_b <= (0 => '1', others => '0');
+          mult2_a          <= (0 => '1', others => '0');
+          mult2_b          <= (0 => '1', others => '0');
 
         when prepare_inversion =>
           mult1_a <= mult2_out;
@@ -324,11 +326,9 @@ begin
           
         when update_estimated_codeword =>
           if is_root = '1' then
-            if codeword_index = 0 then
-              estimated_codeword(codeword_index) <= mult1_out;
-            else
-              estimated_codeword(N_LENGTH - codeword_index) <= mult1_out;
-            end if;
+            errors_magnitudes(errors_counter) <= mult1_out;
+            errors_indices(errors_counter)    <= N_LENGTH - codeword_index;
+            errors_counter <= errors_counter + 1;
           end if;
 
           codeword_index <= codeword_index + 1;

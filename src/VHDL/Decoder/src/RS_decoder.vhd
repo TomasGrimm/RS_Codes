@@ -55,29 +55,34 @@ architecture RS_decoder of RS_decoder is
       syndrome      : in syndrome_vector;
       error_locator : in key_equation;
 
-      done               : out std_logic;
-      estimated_codeword : out codeword_array);
+      done              : out std_logic;
+      errors_magnitudes : out errors_values;
+      errors_indices    : out errors_locations);
   end component;
 
-  signal syndrome_done : std_logic;
-  signal bm_done       : std_logic;
-  signal cf_done       : std_logic;
-
-  signal decoding_done                : std_logic;
-  signal estimated_codeword_shift_out : std_logic;
-  signal received_is_codeword         : std_logic;
+  signal syndrome_done        : std_logic;
+  signal bm_done              : std_logic;
+  signal cf_done              : std_logic;
+  signal decoding_done        : std_logic;
+  signal correct_received     : std_logic;
+  signal received_is_codeword : std_logic;
 
   signal syndrome_output : syndrome_vector;
-  signal bm_output       : key_equation;
-  signal cf_output       : codeword_array;
-  signal received        : codeword_array;
+  signal syndrome_reg    : syndrome_vector;
 
-  signal syndrome_reg : syndrome_vector;
-  signal bm_reg       : key_equation;
-  signal cf_reg       : codeword_array;
+  signal bm_output : key_equation;
+  signal bm_reg    : key_equation;
 
-  signal received_index : integer := N_LENGTH - 1;
-  signal output_index   : integer := N_LENGTH - 1;
+  signal cf_magnitudes : errors_values;
+  signal cf_mags_reg   : errors_values;
+  signal cf_indices    : errors_locations;
+  signal cf_inds_reg   : errors_locations;
+
+  signal received : codeword_array;
+
+  signal errors_counter : integer;
+  signal output_index   : integer;
+  signal received_index : integer;
   
 begin
   syndrome_module : Syndrome
@@ -101,38 +106,36 @@ begin
 
   cf_module : Chien_Forney
     port map (
-      clock              => clock,
-      reset              => reset,
-      enable             => bm_done,
-      syndrome           => syndrome_reg,
-      error_locator      => bm_reg,
-      done               => cf_done,
-      estimated_codeword => cf_output);
+      clock             => clock,
+      reset             => reset,
+      enable            => bm_done,
+      syndrome          => syndrome_reg,
+      error_locator     => bm_reg,
+      done              => cf_done,
+      errors_magnitudes => cf_magnitudes,
+      errors_indices    => cf_indices);
 
   process(clock)
   begin
     if clock'event and clock = '1' then
       if reset = '1' or decoding_done = '1' then
-        syndrome_reg                 <= (others => (others => '0'));
-        bm_reg                       <= (others => (others => '0'));
-        cf_reg                       <= (others => (others => '0'));
-        estimated_codeword_shift_out <= '0';
+        syndrome_reg     <= (others => (others => '0'));
+        bm_reg           <= (others => (others => '0'));
+        cf_mags_reg      <= (others => (others => '0'));
+        cf_inds_reg      <= (others => 0);
+        correct_received <= '0';
       elsif syndrome_done = '1' then
         syndrome_reg <= syndrome_output;
       elsif bm_done = '1' then
         bm_reg <= bm_output;
       elsif cf_done = '1' then
-        cf_reg                       <= cf_output;
-        estimated_codeword_shift_out <= '1';
+        cf_mags_reg      <= cf_magnitudes;
+        cf_inds_reg      <= cf_indices;
+        correct_received <= '1';
       end if;
     end if;
   end process;
 
---  syndrome_reg <= (others => (others => '0')) when reset = '1' or decoding_done = '1' else syndrome_output when syndrome_done = '1';
---  bm_reg <= (others => (others => '0')) when reset = '1' or decoding_done = '1' else bm_output when bm_done = '1';
---  cf_reg <= (others => (others => '0')) when reset = '1' or decoding_done = '1' else cf_output when cf_done = '1';
---  estimated_codeword_shift_out <= '0' when reset = '1' or decoding_done = '1' else '1' when cf_done = '1' and CLOCK_50 = '1';
-  
   process(clock)
   begin
     if clock'event and clock = '1' then
@@ -150,10 +153,11 @@ begin
   begin
     if clock'event and clock = '1' then
       if reset = '1' then
-        output_index  <= N_LENGTH - 1;
-        data_out      <= (others => '0');
-        decoding_done <= '0';
-        done          <= '0';
+        output_index   <= N_LENGTH - 1;
+        data_out       <= (others => '0');
+        decoding_done  <= '0';
+        done           <= '0';
+        errors_counter <= 0;
       else
         if received_is_codeword = '1' then
           if output_index >= 0 then
@@ -165,14 +169,24 @@ begin
           end if;
         end if;
 
-        if estimated_codeword_shift_out = '1' then
-          if output_index >= 0 then
-            data_out     <= cf_reg(output_index) xor received(output_index);
+        if correct_received = '1' then
+          if output_index = cf_inds_reg(errors_counter) then
+            data_out       <= cf_mags_reg(errors_counter) xor received(output_index);
+            errors_counter <= errors_counter + 1;
+          else
+            data_out <= received(output_index);
+          end if;
+
+          if output_index > 0 then
             output_index <= output_index - 1;
           else
-            decoding_done <= '1';
-            done          <= '1';
+            output_index <= 0;
           end if;
+        end if;
+
+        if output_index = 0 then
+          decoding_done <= '1';
+          done          <= '1';
         end if;
       end if;
     end if;

@@ -28,16 +28,13 @@ add wave -divider "Internal"
 add wave -label syndrome_done /RS_decoder_tb/decoder/syndrome_done
 add wave -label bm_done /RS_decoder_tb/decoder/bm_done
 add wave -label cf_done /RS_decoder_tb/decoder/cf_done
-add wave -label syndrome_output /RS_decoder_tb/decoder/syndrome_output
-add wave -label bm_output /RS_decoder_tb/decoder/bm_output
-add wave -label cf_output /RS_decoder_tb/decoder/cf_output
+add wave -label syndrome_output /RS_decoder_tb/decoder/syndrome_reg
+add wave -label bm_output /RS_decoder_tb/decoder/bm_reg
+add wave -label cf_magnitudes /RS_decoder_tb/decoder/cf_mags_reg
+add wave -label cf_indices /RS_decoder_tb/decoder/cf_inds_reg
 add wave -label received /RS_decoder_tb/decoder/received
 add wave -label received_index /RS_decoder_tb/decoder/received_index
 add wave -label output_index /RS_decoder_tb/decoder/output_index
-
-add wave -label syndrome_reg /RS_decoder_tb/decoder/syndrome_reg
-add wave -label bm_reg /RS_decoder_tb/decoder/bm_reg
-add wave -label cf_reg /RS_decoder_tb/decoder/cf_reg
 
 add wave -label cf_internal /RS_decoder_tb/cf_internal
 
@@ -53,7 +50,10 @@ add wave -label cf_internal /RS_decoder_tb/cf_internal
 #add wave -label "syndromes" /RS_decoder_tb/decoder/syndrome_module/syndromes
 #add wave -label "multiplications" /RS_decoder_tb/decoder/syndrome_module/multiplications
 
+add wave -label cf_mags /RS_decoder_tb/decoder/cf_module/errors_magnitudes
+add wave -label cf_inds /RS_decoder_tb/decoder/cf_module/errors_indices
+
 run 70000 ns
 #wave zoom full
 
-quit -f
+#quit -f
