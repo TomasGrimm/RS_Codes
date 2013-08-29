@@ -13,12 +13,13 @@ use work.ReedSolomon.all;
 
 entity RS_decoder is
   port (
-    clock   : in std_logic;
-    reset   : in std_logic;
-    enable  : in std_logic;
-    data_in : in field_element;
+    clock       : in std_logic;
+    reset       : in std_logic;
+    start_block : in std_logic;
+    --end_block  : in std_logic;
+    data_in     : in field_element;
 
---  error    : out std_logic;
+    --error    : out std_logic;
     done     : out std_logic;
     data_out : out field_element);
 end entity;
@@ -50,26 +51,28 @@ architecture RS_decoder of RS_decoder is
 
   component Chien_Forney is
     port (
-      clock           : in std_logic;   -- clock signal
-      reset           : in std_logic;   -- reset signal
-      enable          : in std_logic;  -- enables this unit when the key equation is ready
+      clock           : in std_logic;
+      reset           : in std_logic;
+      enable          : in std_logic;
       error_locator   : in key_equation;
       error_evaluator : in omega_array;
 
-      done            : out std_logic;  -- signals when the search is done
+      done            : out std_logic;
       is_root         : out std_logic;
       processing      : out std_logic;
       error_index     : out integer;
       error_magnitude : out field_element);
   end component;
 
-  signal syndrome_done        : std_logic;
   signal bm_done              : std_logic;
   signal cf_done              : std_logic;
   signal cf_processing        : std_logic;
   signal cf_root              : std_logic;
   signal decoding_done        : std_logic;
+  signal enable_bm            : std_logic;
+  signal output_codeword      : std_logic;
   signal received_is_codeword : std_logic;
+  signal syndrome_done        : std_logic;
 
   signal syndrome_output : syndrome_vector;
   signal syndrome_reg    : syndrome_vector;
@@ -92,17 +95,20 @@ begin
     port map (
       clock           => clock,
       reset           => reset,
-      enable          => enable,
+      enable          => start_block,
       received_vector => data_in,
       done            => syndrome_done,
       no_error        => received_is_codeword,
       syndrome        => syndrome_output);
 
+  enable_bm <= '1' when syndrome_done = '1' and received_is_codeword = '0' else
+               '0';
+  
   bm_module : BerlekampMassey
     port map (
       clock           => clock,
       reset           => reset,
-      enable          => syndrome_done,
+      enable          => enable_bm,
       syndrome        => syndrome_reg,
       done            => bm_done,
       error_locator   => bm_locator_output,
@@ -139,16 +145,33 @@ begin
       end if;
     end if;
   end process;
-
+  
   process(clock)
   begin
     if clock'event and clock = '1' then
       if reset = '1' then
-        received       <= (others => (others => '0'));
-        received_index <= N_LENGTH - 1;
-      elsif enable = '1' then
+        received         <= (others => (others => '0'));
+        received_index   <= N_LENGTH - 1;
+        
+      elsif start_block = '1' then
         received(received_index) <= data_in;
-        received_index           <= received_index - 1;
+
+        if received_index > 0 then
+          received_index <= received_index - 1;
+        else
+          received_index <= 0;
+        end if;
+      end if;
+    end if;
+  end process;
+
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' or start_block = '1' then
+        output_codeword <= '0';
+      elsif received_is_codeword = '1' then
+        output_codeword <= '1';
       end if;
     end if;
   end process;
@@ -157,23 +180,25 @@ begin
   begin
     if clock'event and clock = '1' then
       if reset = '1' then
-        output_index   <= N_LENGTH - 1;
-        decoding_done  <= '0';
+        output_index  <= N_LENGTH - 1;
+        decoding_done <= '0';
+        
       else
-        if received_is_codeword = '1' then
-          if output_index >= 0 then
+        if output_codeword = '1' then
+          if output_index > 0 then
             output_index <= output_index - 1;
           else
             decoding_done <= '1';
+            output_index  <= 0;
           end if;
         end if;
       end if;
     end if;
   end process;
 
-  data_out <= received(output_index) when received_is_codeword = '1' else
+  data_out <= received(output_index) when output_codeword = '1' else
               received(cf_index) xor cf_magnitude when cf_root = '1' and cf_processing = '1' else
-              received(cf_index) when cf_processing = '1' else
+              received(cf_index)                  when cf_processing = '1'                   else
               (others => '0');
 
   done <= '1' when decoding_done = '1' or cf_done = '1' else

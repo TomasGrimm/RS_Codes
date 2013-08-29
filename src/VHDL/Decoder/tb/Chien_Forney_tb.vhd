@@ -10,25 +10,34 @@ end entity;
 architecture Chien_Forney_tb of Chien_Forney_tb is
   component Chien_Forney is
     port (
-      clock           : in std_logic;
-      reset           : in std_logic;
-      enable          : in std_logic;
+      clock           : in std_logic;   -- clock signal
+      reset           : in std_logic;   -- reset signal
+      enable          : in std_logic;  -- enables this unit when the key equation is ready
       error_locator   : in key_equation;
       error_evaluator : in omega_array;
 
-      done            : out std_logic;
+      done            : out std_logic;  -- signals when the search is done
       is_root         : out std_logic;
+      processing      : out std_logic;
+      error_index     : out integer;
       error_magnitude : out field_element);
   end component;
 
-  signal clk, rst, ena, dne, root : std_logic;
-  signal erl                      : key_equation;
-  signal eep                      : omega_array;
-  signal err_mag                  : field_element;
+  signal clk     : std_logic;
+  signal rst     : std_logic;
+  signal ena     : std_logic;
+  signal erl     : key_equation;
+  signal eep     : omega_array;
 
-  file fd_bm_loc_in : text open read_mode is "./comparison/bm_locator.txt";
-  file fd_bm_eva_in : text open read_mode is "./comparison/bm_evaluator.txt";
-  file fd_out       : text open write_mode is "./comparison/chien_vhdl.txt";
+  signal dne     : std_logic;
+  signal root    : std_logic;
+  signal working : std_logic;
+  signal index   : integer;
+  signal err_mag : field_element;
+
+  file fd_bm_loc_in : text open read_mode is "../../Tests/bm_locator_golden.txt";
+  file fd_bm_eva_in : text open read_mode is "../../Tests/bm_evaluator_golden.txt";
+  file fd_out       : text open write_mode is "./files/chien_vhdl.txt";
   
 begin
   CF : Chien_Forney
@@ -40,6 +49,8 @@ begin
       error_evaluator => eep,
       done            => dne,
       is_root         => root,
+      processing      => working,
+      error_index     => index,
       error_magnitude => err_mag);
 
   process
@@ -174,17 +185,4 @@ begin
     ena <= '0';
     wait;
   end process;
-
-  --process
-  --  variable line_num : line;
-  --  variable counter  : integer := 0;
-  --begin
-  --  wait until dne = '1';
-
-  --  while counter < N_LENGTH loop
-  --    write(line_num, est(counter));
-  --    writeline(fd_out, line_num);
-  --    counter := counter + 1;
-  --  end loop;
-  --end process;
 end architecture;

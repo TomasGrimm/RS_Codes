@@ -25,30 +25,25 @@ architecture Chien_Forney of Chien_Forney is
       w : out field_element);
   end component;
 
+  component inversion_table
+    port (
+      input  : in  field_element;
+      output : out field_element);
+  end component;
+
   type   states is (idle, chienize, set_done);
   signal current_state, next_state : states;
 
+  signal first_iteration : std_logic;
+  signal processed       : std_logic;
   signal sum_and_compare : std_logic;
 
   signal alpha          : field_element;
-  signal magnitude      : field_element;
   signal omega_scaled   : field_element;
   signal omega_sum      : field_element;
   signal sigma_sum      : field_element;
   signal sigma_derived  : field_element;
   signal sigma_inverted : field_element;
-  signal step_1         : field_element;
-  signal step_2         : field_element;
-  signal step_2_partial : field_element;
-  signal step_3         : field_element;
-  signal step_3_partial : field_element;
-  signal step_4         : field_element;
-  signal step_4_partial : field_element;
-  signal step_5         : field_element;
-  signal step_5_partial : field_element;
-  signal step_6         : field_element;
-  signal step_6_partial : field_element;
-  signal step_7_partial : field_element;
 
   signal error_locator_out     : key_equation;
   signal partial_error_locator : key_equation;
@@ -92,7 +87,7 @@ begin
   error_index <= iterations_counter;
 
   sigma_input <= (others => (others => '0')) when enable = '1' else
-                 sigma_alpha_zero when iterations_counter = -1 or iterations_counter = 0 else
+                 sigma_alpha_zero when iterations_counter = 0 else
                  sigma_alphas;
   
   error_locator_terms : for I in 0 to T generate
@@ -141,26 +136,10 @@ begin
                error_evaluator_out(14) xor
                error_evaluator_out(15);
 
-  sigma_derived_inversion_step_1         : field_element_multiplier port map (sigma_derived, sigma_derived, step_1);
-  sigma_derived_inversion_step_2_partial : field_element_multiplier port map (step_1, sigma_derived, step_2_partial);
-  sigma_derived_inversion_step_2         : field_element_multiplier port map (step_2_partial, step_2_partial, step_2);
-  sigma_derived_inversion_step_3_partial : field_element_multiplier port map (step_2, sigma_derived, step_3_partial);
-  sigma_derived_inversion_step_3         : field_element_multiplier port map (step_3_partial, step_3_partial, step_3);
-  sigma_derived_inversion_step_4_partial : field_element_multiplier port map (step_3, sigma_derived, step_4_partial);
-  sigma_derived_inversion_step_4         : field_element_multiplier port map (step_4_partial, step_4_partial, step_4);
-  sigma_derived_inversion_step_5_partial : field_element_multiplier port map (step_4, sigma_derived, step_5_partial);
-  sigma_derived_inversion_step_5         : field_element_multiplier port map (step_5_partial, step_5_partial, step_5);
-  sigma_derived_inversion_step_6_partial : field_element_multiplier port map (step_5, sigma_derived, step_6_partial);
-  sigma_derived_inversion_step_6         : field_element_multiplier port map (step_6_partial, step_6_partial, step_6);
-  sigma_derived_inversion_step_7_partial : field_element_multiplier port map (step_6, sigma_derived, step_7_partial);
-  sigma_derived_inversion_step_7         : field_element_multiplier port map (step_7_partial, step_7_partial, sigma_inverted);
+  inverter : inversion_table port map (sigma_derived, sigma_inverted);
 
-  omega_scaling         : field_element_multiplier port map (omega_sum, alpha, omega_scaled);
-  magnitude_calculation : field_element_multiplier port map (omega_scaled, sigma_inverted, magnitude);
+  magnitude_calculation : field_element_multiplier port map (omega_sum, sigma_inverted, error_magnitude);
 
-  error_magnitude <= (others => '0') when reset = '1' or sum_and_compare = '0' else
-                     magnitude;
-  
   process(clock)
   begin
     if clock'event and clock = '1' then
@@ -172,7 +151,7 @@ begin
     end if;
   end process;
 
-  process(current_state, enable, iterations_counter)
+  process(current_state, enable, iterations_counter, processed)
   begin
     case current_state is
       when idle =>
@@ -183,7 +162,7 @@ begin
         end if;
 
       when chienize =>
-        if iterations_counter = 0 then
+        if iterations_counter = 0 and processed = '1' then
           next_state <= set_done;
         else
           next_state <= chienize;
@@ -202,25 +181,26 @@ begin
     if clock'event and clock = '1' then
       case current_state is
         when idle =>
-          done                    <= '0';
-          sum_and_compare         <= '0';
-          partial_error_locator   <= error_locator;
-          partial_error_evaluator <= error_evaluator;
-          iterations_counter      <= N_LENGTH - 1;
-          alpha                   <= last_element;
+          done            <= '0';
+          sum_and_compare <= '0';
+          first_iteration <= '1';
+          alpha           <= last_element;
+
+          partial_error_locator   <= (others => (others => '0'));
+          partial_error_evaluator <= (others => (others => '0'));
           
         when chienize =>
-          partial_error_locator   <= error_locator_out;
-          partial_error_evaluator <= error_evaluator_out;
+          if first_iteration = '1' then
+            partial_error_locator   <= error_locator;
+            partial_error_evaluator <= error_evaluator;
+            first_iteration         <= '0';
+          else
+            partial_error_locator   <= error_locator_out;
+            partial_error_evaluator <= error_evaluator_out;
+          end if;
 
           sum_and_compare <= '1';
 
-          if iterations_counter > 0 then
-            iterations_counter <= iterations_counter - 1;
-            else
-              iterations_counter <= 0;
-          end if;
-          
           alpha(7) <= alpha(6);
           alpha(6) <= alpha(5);
           alpha(5) <= alpha(4);
@@ -237,6 +217,28 @@ begin
         when others =>
           null;
       end case;
+    end if;
+  end process;
+
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        processed          <= '0';
+        iterations_counter <= 0;
+        
+      elsif sum_and_compare = '1' then
+        if iterations_counter > 0 then
+          iterations_counter <= iterations_counter - 1;
+          processed          <= '1';
+        else
+          iterations_counter <= 0;
+        end if;
+
+        if alpha = alpha_zero then
+          iterations_counter <= N_LENGTH - 1;
+        end if;
+      end if;
     end if;
   end process;
 end architecture;
