@@ -57,7 +57,7 @@ add wave -label CS /BerlekampMassey_tb/BM/current_state
 
 #add wave -label double_L /BerlekampMassey_tb/BM/double_L
 
-run 2000 ns
-#wave zoom full
+run 1200 ns
+wave zoom full
 
 #quit -f

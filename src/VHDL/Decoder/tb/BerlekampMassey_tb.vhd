@@ -24,7 +24,7 @@ architecture BerlekampMassey_tb of BerlekampMassey_tb is
   signal syn                : syndrome_vector;
   signal equ                : key_equation;
 
-  file fd_in : text open read_mode is "./comparison/syndrome_golden.txt";
+  file fd_in : text open read_mode is "./comparison/syndrome_vhdl.txt";
   file fd_out : text open write_mode is "./comparison/bm_vhdl.txt";
 begin
   BM : BerlekampMassey

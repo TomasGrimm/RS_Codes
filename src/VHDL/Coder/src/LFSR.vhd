@@ -23,7 +23,7 @@ architecture LFSR of LFSR is
       w : out field_element);
   end component;
 
-  type   states is (reset_FSM, idle, calculate_parity, shift_out_parity, set_done);
+  type   states is (idle, calculate_parity, shift_out_parity, set_done);
   signal current_state, next_state : states;
 
   signal feed_through : field_element;
@@ -51,7 +51,7 @@ begin
   feed_through <= (others => '0') when reset = '1' or start = '1' else
                   message xor intermediary_poly(T2 - 1);
   
-  process(clock)
+  process(clock, reset)
   begin
     if clock'event and clock = '1' then
       if reset = '1' then
@@ -90,7 +90,7 @@ begin
         next_state <= idle;
         
       when others =>
-        next_state <= reset_FSM;
+        null;
         
     end case;
   end process;
@@ -149,7 +149,7 @@ begin
           parity_shifted <= '1';
           
         when others =>
-          null;
+		    null;
       end case;
     end if;
   end process;

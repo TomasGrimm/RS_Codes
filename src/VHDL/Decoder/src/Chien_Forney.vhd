@@ -47,12 +47,11 @@ architecture Chien_Forney of Chien_Forney is
   signal sigma_derived_evaluated : field_element;
   signal syndrome_element        : field_element;
 
+  signal index            : integer;
   signal codeword_index   : integer;
   signal errors_counter   : integer;
   signal inverter_counter : integer;
   signal key_counter      : integer;
-  signal omega_index      : integer;
-  signal syndrome_index   : integer;
 
   signal omega_step    : key_equation;
   signal sigma_derived : key_equation;
@@ -92,7 +91,7 @@ begin
     end if;
   end process;
 
-  process(current_state, enable, syndrome_index, is_last_element, is_root, omega_index, codeword_index, key_counter, inverter_counter)
+  process(current_state, enable, index, is_last_element, is_root, codeword_index, key_counter, inverter_counter)
   begin
     case current_state is
       when idle =>
@@ -106,7 +105,7 @@ begin
         next_state <= calculate_omega;
         
       when calculate_omega =>
-        if syndrome_index = (T2 - 1) then
+        if index = (T2 - 1) then
           next_state <= set_alpha;
         else
           next_state <= prepare_omega;
@@ -141,7 +140,7 @@ begin
         next_state <= calculate_error_evaluator;
 
       when calculate_error_evaluator =>
-        if omega_index = 0 then
+        if index = 0 then
           next_state <= sum_independent_term;
         else
           next_state <= prepare_error_evaluator;
@@ -200,10 +199,9 @@ begin
           sigma_derived           <= (others => (others => '0'));
           sigma_derived_evaluated <= (others => '0');
 
+          index            <= 0;
           codeword_index   <= 0;
           inverter_counter <= 0;
-          omega_index      <= T2 - 1;
-          syndrome_index   <= 0;
           key_counter      <= 0;
           errors_counter   <= 0;
 
@@ -221,23 +219,23 @@ begin
           sigma_derived(4) <= error_locator(5);
           sigma_derived(6) <= error_locator(7);
 
-          syndrome_element <= syndrome(syndrome_index);
+          syndrome_element <= syndrome(index);
           
         when calculate_omega =>
-          omega(syndrome_index)     <= omega(syndrome_index) xor omega_step(0);
-          omega(syndrome_index + 1) <= omega(syndrome_index + 1) xor omega_step(1);
-          omega(syndrome_index + 2) <= omega(syndrome_index + 2) xor omega_step(2);
-          omega(syndrome_index + 3) <= omega(syndrome_index + 3) xor omega_step(3);
-          omega(syndrome_index + 4) <= omega(syndrome_index + 4) xor omega_step(4);
-          omega(syndrome_index + 5) <= omega(syndrome_index + 5) xor omega_step(5);
-          omega(syndrome_index + 6) <= omega(syndrome_index + 6) xor omega_step(6);
-          omega(syndrome_index + 7) <= omega(syndrome_index + 7) xor omega_step(7);
-          omega(syndrome_index + 8) <= omega(syndrome_index + 8) xor omega_step(8);
+          omega(index)     <= omega(index) xor omega_step(0);
+          omega(index + 1) <= omega(index + 1) xor omega_step(1);
+          omega(index + 2) <= omega(index + 2) xor omega_step(2);
+          omega(index + 3) <= omega(index + 3) xor omega_step(3);
+          omega(index + 4) <= omega(index + 4) xor omega_step(4);
+          omega(index + 5) <= omega(index + 5) xor omega_step(5);
+          omega(index + 6) <= omega(index + 6) xor omega_step(6);
+          omega(index + 7) <= omega(index + 7) xor omega_step(7);
+          omega(index + 8) <= omega(index + 8) xor omega_step(8);
 
           -- (syndrome * key_equation) mod x^2t
           omega(T2 to (T2 + T - 1)) <= (others => (others => '0'));
 
-          syndrome_index <= syndrome_index + 1;
+          index <= index + 1;
           
         when set_alpha =>
           alpha(7) <= alpha(6);
@@ -250,7 +248,7 @@ begin
           alpha(0) <= alpha(7);
 
           omega_evaluated <= (others => '0');
-          omega_index     <= T2 - 1;
+          index           <= T2 - 1;
           key_counter     <= T;
           key_evaluated   <= (others => '0');
           
@@ -267,38 +265,36 @@ begin
           end if;
 
         when analyze_key_evaluated =>
-          if key_counter = 0 then
-            if alpha = last_element then
-              is_last_element <= '1';
-            else
-              is_last_element <= '0';
-            end if;
+          if alpha = last_element then
+            is_last_element <= '1';
+          else
+            is_last_element <= '0';
+          end if;
 
-            if key_evaluated = all_zeros then
-              is_root <= '1';
-            else
-              is_root <= '0';
-            end if;
+          if key_evaluated = all_zeros then
+            is_root <= '1';
+          else
+            is_root <= '0';
           end if;
           
         when evaluate_is_root =>
           -- the other process will set the next state based on the 'is_root' variable
 
         when prepare_error_evaluator =>
-          mult1_a <= omega(omega_index);
+          mult1_a <= omega(index);
           mult1_b <= alpha;
 
-          if omega_index <= T then
-            mult2_a <= sigma_derived(omega_index);
+          if index <= T then
+            mult2_a <= sigma_derived(index);
             mult2_b <= alpha;
           end if;
 
-          omega_index <= omega_index - 1;
+          index <= index - 1;
 
         when calculate_error_evaluator =>
           omega_evaluated <= omega_evaluated xor mult1_out;  -- apply Horner's rule to all elements multiplied by x
 
-          if omega_index < T then
+          if index < T then
             sigma_derived_evaluated <= sigma_derived_evaluated xor mult2_out;
           end if;
 
@@ -328,7 +324,7 @@ begin
           if is_root = '1' then
             errors_magnitudes(errors_counter) <= mult1_out;
             errors_indices(errors_counter)    <= N_LENGTH - codeword_index;
-            errors_counter <= errors_counter + 1;
+            errors_counter                    <= errors_counter + 1;
           end if;
 
           codeword_index <= codeword_index + 1;

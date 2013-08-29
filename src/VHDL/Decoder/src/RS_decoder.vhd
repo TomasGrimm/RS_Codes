@@ -63,8 +63,8 @@ architecture RS_decoder of RS_decoder is
   signal syndrome_done        : std_logic;
   signal bm_done              : std_logic;
   signal cf_done              : std_logic;
-  signal decoding_done        : std_logic;
   signal correct_received     : std_logic;
+  signal correction_done      : std_logic;
   signal received_is_codeword : std_logic;
 
   signal syndrome_output : syndrome_vector;
@@ -115,10 +115,11 @@ begin
       errors_magnitudes => cf_magnitudes,
       errors_indices    => cf_indices);
 
+  -- Process that controls the registers between each module
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or decoding_done = '1' then
+      if reset = '1' or enable = '1' then
         syndrome_reg     <= (others => (others => '0'));
         bm_reg           <= (others => (others => '0'));
         cf_mags_reg      <= (others => (others => '0'));
@@ -136,6 +137,8 @@ begin
     end if;
   end process;
 
+  -- Process that stores the received polynomial in order to correct it
+  -- after the decoding process is done
   process(clock)
   begin
     if clock'event and clock = '1' then
@@ -149,27 +152,29 @@ begin
     end if;
   end process;
 
+  -- Process that outputs the codeword after syndrome detects it has no errors or
+  -- after the errors magnitudes have been calculated
   process(clock)
   begin
     if clock'event and clock = '1' then
       if reset = '1' then
-        output_index   <= N_LENGTH - 1;
-        data_out       <= (others => '0');
-        decoding_done  <= '0';
-        done           <= '0';
-        errors_counter <= 0;
+        output_index    <= N_LENGTH - 1;
+        data_out        <= (others => '0');
+        done            <= '0';
+        correction_done <= '0';
+        errors_counter  <= 0;
       else
         if received_is_codeword = '1' then
-          if output_index >= 0 then
+          if output_index > 0 then
             data_out     <= received(output_index);
             output_index <= output_index - 1;
           else
-            decoding_done <= '1';
-            done          <= '1';
+            output_index <= 0;
+            done         <= '1';
           end if;
         end if;
 
-        if correct_received = '1' then
+        if correct_received = '1' and correction_done = '0' then
           if output_index = cf_inds_reg(errors_counter) then
             data_out       <= cf_mags_reg(errors_counter) xor received(output_index);
             errors_counter <= errors_counter + 1;
@@ -180,13 +185,10 @@ begin
           if output_index > 0 then
             output_index <= output_index - 1;
           else
-            output_index <= 0;
+            output_index    <= 0;
+            done            <= '1';
+            correction_done <= '1';
           end if;
-        end if;
-
-        if output_index = 0 then
-          decoding_done <= '1';
-          done          <= '1';
         end if;
       end if;
     end if;

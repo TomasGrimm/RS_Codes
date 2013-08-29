@@ -4,13 +4,9 @@ use work.ReedSolomon.all;
 
 entity RS_coder is
   port (
-    clock   : in std_logic;             -- clock signal
-    reset   : in std_logic;  -- signal used to clear all registers and the ready signal
-    start   : in std_logic;  -- indicates when a new message is ready to be encoded
-    message : in field_element;         -- message to be encoded
-
-    done     : out std_logic;           -- signals when the processing is done
-    codeword : out field_element);  -- codeword containing the message and the calculated parity bits
+    CLOCK_50 : in std_logic;             -- clock signal
+    SW       : in std_logic_vector(17 downto 0);
+	 LEDR     : out std_logic_vector(17 downto 0));
 end entity;
 
 architecture RS_coder of RS_coder is
@@ -34,29 +30,29 @@ architecture RS_coder of RS_coder is
 begin  -- RS
   encode : LFSR
     port map (
-      clock          => clock,
-      reset          => reset,
-      start          => start,
-      message        => message,
+      clock          => CLOCK_50,
+      reset          => SW(0),
+      start          => SW(1),
+      message        => SW(9 downto 2),
       codeword       => parity_out,
       parity_ready   => par_ready,
       parity_shifted => par_shifted);
 
-  process(clock)
+  process(CLOCK_50, SW(0))
   begin
-    if clock'event and clock = '1' then
-      if reset = '1' then
+    if CLOCK_50'event and CLOCK_50 = '1' then
+      if SW(0) = '1' then
         delay <= (others => '0');
       else
-        delay <= message;
+        delay <= SW(9 downto 2);
       end if;
     end if;
   end process;
 
-  codeword <= delay when par_ready = '0' else
+  LEDR(7 downto 0) <= delay when par_ready = '0' else
               parity_out;
 
-  done <= '1' when par_shifted = '1' else
+  LEDR(17) <= '1' when par_shifted = '1' else
           '0';
   
 end architecture;

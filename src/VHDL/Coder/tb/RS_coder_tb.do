@@ -4,8 +4,8 @@ vlib work
 
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
-vcom -check_synthesis ../src/LFSR.vhd
-vcom -check_synthesis ../src/RS_coder.vhd 
+vcom ../src/LFSR.vhd
+vcom ../src/RS_coder.vhd 
 vcom RS_coder_tb.vhd
 
 vsim -t ns work.RS_coder_tb

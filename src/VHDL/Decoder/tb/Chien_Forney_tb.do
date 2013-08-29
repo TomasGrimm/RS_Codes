@@ -18,8 +18,7 @@ add wave -label enable /Chien_Forney_tb/ena
 add wave -label syndrome /Chien_Forney_tb/syn
 add wave -label "error_locator" /Chien_Forney_tb/erl
 add wave -label done /Chien_Forney_tb/dne
-add wave -label "errors_magnitudes" /Chien_Forney_tb/err_mag
-add wave -label "errors_indices" /Chien_Forney_tb/err_ind
+add wave -label "estimate_codeword" /Chien_Forney_tb/est
 
 add wave -divider States
 add wave -label CS /Chien_Forney_tb/CF/current_state
@@ -50,10 +49,7 @@ add wave -label "omega_index" /Chien_Forney_tb/CF/omega_index
 add wave -label "omega_evaluated" /Chien_Forney_tb/CF/omega_evaluated
 add wave -label "sigma_derived_evaluated" /Chien_Forney_tb/CF/sigma_derived_evaluated
 
-add wave -label "inverter_counter" /Chien_Forney_tb/CF/inverter_counter
-add wave -label "errors_counter" /Chien_Forney_tb/CF/errors_counter
-
 run 65000 ns
 #wave zoom full
 
-#quit -f
+quit -f
