@@ -2,15 +2,17 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use work.ReedSolomon.all;
 
+-- Reed-Solomon Encoder
+
 entity RS_coder is
   port (
-    clock   : in std_logic;     -- clock signal
-    reset   : in std_logic;     -- signal used to clear all registers and the ready signal
-    start   : in std_logic;     -- indicates when a new message is ready to be encoded
-    message : in field_element; -- message to be encoded
-
-    done     : out std_logic;       -- signals when the processing is done
-    codeword : out field_element);  -- codeword containing the message and the calculated parity bits
+    clock         : in  std_logic;       -- clock signal
+    reset         : in  std_logic;       -- signal used to clear all registers and the ready signal
+    message_start : in  std_logic;       -- indicates when a new message is ready to be encoded
+    message_end   : in  std_logic;       -- indicates the end of a message
+    message       : in  field_element;   -- message to be encoded
+    done          : out std_logic;       -- signals when the processing is done
+    codeword      : out field_element);  -- codeword containing the message and the calculated parity bits
 end entity;
 
 architecture RS_coder of RS_coder is
@@ -18,7 +20,8 @@ architecture RS_coder of RS_coder is
     port (
       clock          : in  std_logic;
       reset          : in  std_logic;
-      start          : in  std_logic;
+      message_start  : in  std_logic;
+      message_end    : in  std_logic;
       message        : in  field_element;
       codeword       : out field_element;
       parity_ready   : out std_logic;
@@ -28,14 +31,15 @@ architecture RS_coder of RS_coder is
   signal parity_out : field_element;
   signal delay      : field_element;
 
-  signal par_ready   : std_logic;
+  signal par_ready : std_logic;
   
 begin  -- RS
   encode : LFSR
     port map (
       clock          => clock,
       reset          => reset,
-      start          => start,
+      message_start  => message_start,
+      message_end    => message_end,
       message        => message,
       codeword       => parity_out,
       parity_ready   => par_ready,

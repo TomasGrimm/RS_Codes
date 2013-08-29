@@ -16,15 +16,17 @@ add wave /Syndrome_tb/rst
 add wave /Syndrome_tb/ena
 add wave /Syndrome_tb/rcv
 add wave /Syndrome_tb/dne
-add wave /Syndrome_tb/noerr
 add wave /Syndrome_tb/sdm
 
 add wave -divider
 
-add wave /Syndrome_tb/synd/syndromes
-add wave /Syndrome_tb/synd/counter
+add wave  \
+/syndrome_tb/synd/registers \
+/syndrome_tb/synd/multiplications \
+/syndrome_tb/synd/enable_operation \
+-radix unsigned /syndrome_tb/synd/counter
 
 run 3000 ns
-#wave zoom full
+wave zoom full
 
-quit -f
+#quit -f

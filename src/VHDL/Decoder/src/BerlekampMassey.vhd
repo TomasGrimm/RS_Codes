@@ -5,17 +5,19 @@ use work.ReedSolomon.all;
 
 -- Implementation of the invertionless Berlekamp-Massey algorithm
 
+-- para o calculo do omega dar certo, ainda falta deslocar para a direita uma
+-- posição por pulso de clock, como era feito o calculo usando a FSM
+
 entity BerlekampMassey is
   port (
     clock    : in std_logic;
     reset    : in std_logic;
     enable   : in std_logic;
-    syndrome : in syndrome_vector;
+    syndrome : in T2less1_array;
 
-    --error    : out std_logic;
     done            : out std_logic;
-    error_locator   : out key_equation;
-    error_evaluator : out omega_array);
+    error_locator   : out T_array;
+    error_evaluator : out T2less1_array);
 end entity;
 
 architecture BerlekampMassey of BerlekampMassey is
@@ -26,256 +28,290 @@ architecture BerlekampMassey of BerlekampMassey is
       w : out field_element);
   end component;
 
-  type   states is (idle, prepare_discrepancy, calculate_discrepancy, prepare_polynomials, update_signals, prepare_omega, calculate_omega, set_done);
-  signal current_state, next_state : states;
+  signal delta            : std_logic;
+  signal enable_locator   : std_logic;
+  signal enable_evaluator : std_logic;
 
-  signal discrepancy         : field_element;
-  signal discrepancy_A       : field_element;
-  signal discrepancy_B       : field_element;
-  signal discrepancy_product : field_element;
-  signal sigma_A             : field_element;
-  signal sigmaX_A            : field_element;
-  signal theta               : field_element;
+  signal discrepancy : field_element;
+  signal theta       : field_element;
 
-  signal B              : key_equation;
-  signal sigma          : key_equation;
-  signal sigma_B        : key_equation;
-  signal sigma_product  : key_equation;
-  signal sigmaX_B       : key_equation;
-  signal sigmaX_product : key_equation;
-  signal temp_sigma     : key_equation;
+  signal B                     : T2less1_array;
+  signal discrepancy_syndromes : T2less1_array;
+  signal multiplicator_input_1 : T2less1_array;
+  signal multiplicator_input_2 : T2less1_array;
+  signal multiplicator_output  : T2less1_array;
+  signal omega                 : T2less1_array;
+  signal sigma                 : T2less1_array;
+  signal temp_sigma            : T2less1_array;
 
-  signal discrepancy_index : integer;
-  signal index             : integer;
-  signal L                 : integer;
-
-  signal discrepancy_done : std_logic;
-  signal lambda           : std_logic;
-
-  type temp_array is array (0 to T2 + T - 1) of field_element;
-  signal omega_temp : temp_array;
+  signal phase             : unsigned(1 downto 0);
+  signal locator_counter   : unsigned(4 downto 0);
+  signal evaluator_counter : unsigned(4 downto 0);
+  signal L                 : unsigned(4 downto 0);
   
 begin
-  discrepancy_multiplier : field_element_multiplier port map (discrepancy_A, discrepancy_B, discrepancy_product);
+  multiplicators : for I in 0 to T2 - 1 generate
+    multiply : field_element_multiplier port map(multiplicator_input_1(I), multiplicator_input_2(I), multiplicator_output(I));
+  end generate multiplicators;
 
-  sigma_multiplier : for I in 0 to T generate
-    multiplier : field_element_multiplier port map(sigma_A, sigma_B(I), sigma_product(I));
-  end generate sigma_multiplier;
-  
-  sigmaX_multiplier : for I in 0 to T generate
-    multiplier : field_element_multiplier port map(sigmaX_A, sigmaX_B(I), sigmaX_product(I));
-  end generate sigmaX_multiplier;
-  
-  lambda <= '1' when (discrepancy /= all_zeros) and ((L + L) <= index) else
-            '0';
+  multiplicator_input_1 <= discrepancy_syndromes when phase = "00" and enable_locator = '1' else
+                           (others => theta)       when phase = "01" and enable_locator = '1' else
+                           (others => discrepancy) when phase = "10" and enable_locator = '1' else
+                           discrepancy_syndromes   when enable_evaluator = '1';
 
+  multiplicator_input_2 <= sigma when phase = "00" and enable_locator = '1' else
+                           sigma                                            when phase = "01" and enable_locator = '1' else
+                           B                                                when phase = "10" and enable_locator = '1' else
+                           (others => sigma(to_integer(evaluator_counter))) when enable_evaluator = '1';
+
+  delta <= '1' when (discrepancy /= all_zeros) and ((L + L) <= locator_counter) and enable_locator = '1' else
+           '0' when phase = "00";
+
+  -----------------------------------------------------------------------------
+  -- Enable error locator polynomial calculation
+  -----------------------------------------------------------------------------
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' then
-        current_state <= idle;
-      else
-        current_state <= next_state;
+      if reset = '1' or (locator_counter = T2 - 1 and phase = "11") then
+        enable_locator <= '0';
+      elsif enable = '1' and locator_counter < T2 - 1 then
+        enable_locator <= '1';
       end if;
     end if;
   end process;
 
-  process(current_state, enable, discrepancy_done, index)
-  begin
-    case current_state is
-      when idle =>
-        if enable = '1' then
-          next_state <= prepare_discrepancy;
-        else
-          next_state <= idle;
-        end if;
-        
-      when prepare_discrepancy =>
-        next_state <= calculate_discrepancy;
-        
-      when calculate_discrepancy =>
-        if discrepancy_done = '1' then
-          next_state <= prepare_polynomials;
-        else
-          next_state <= prepare_discrepancy;
-        end if;
-        
-      when prepare_polynomials =>
-        next_state <= update_signals;
-        
-      when update_signals =>
-        if index = (T2 - 1) then
-          next_state <= prepare_omega;
-        else
-          next_state <= prepare_discrepancy;
-        end if;
-
-      when prepare_omega =>
-        next_state <= calculate_omega;
-        
-      when calculate_omega =>
-        if index = (T2 - 1) then
-          next_state <= set_done;
-        else
-          next_state <= prepare_omega;
-        end if;
-        
-      when set_done =>
-        next_state <= idle;
-
-      when others =>
-        next_state <= idle;
-        
-    end case;
-  end process;
-
+  -----------------------------------------------------------------------------
+  -- Phase control
+  -----------------------------------------------------------------------------
   process(clock)
   begin
     if clock'event and clock = '1' then
-      case current_state is
-        when idle =>
-          done            <= '0';
-          error_locator   <= (others => (others => '0'));
-          error_evaluator <= (others => (others => '0'));
-
-          discrepancy      <= (others => '0');
-          discrepancy_A    <= (others => '0');
-          discrepancy_B    <= (others => '0');
-          sigma_A          <= (others => '0');
-          sigmaX_A         <= (others => '0');
-          theta            <= (0      => '1', others => '0');
-
-          B          <= (others => (others => '0'));
-          B(0)       <= (0      => '1', others => '0');
-          sigma      <= (others => (others => '0'));
-          sigma(0)   <= (0      => '1', others => '0');
-          sigma_B    <= (others => (others => '0'));
-          sigmaX_B   <= (others => (others => '0'));
-          temp_sigma <= (others => (others => '0'));
-
-          discrepancy_index <= 0;
-          index             <= 0;
-          L                 <= 0;
-
-          discrepancy_done <= '0';
-
-          omega_temp <= (others => (others => '0'));
-
-        -- The discrepancy is calculated according to the current index and the
-        -- value of L
-        when prepare_discrepancy =>
-          discrepancy_A <= sigma(discrepancy_index);
-          discrepancy_B <= syndrome(index - discrepancy_index);
-
-          if discrepancy_index < L then
-            discrepancy_index <= discrepancy_index + 1;
-            discrepancy_done  <= '0';
-          else
-            discrepancy_done <= '1';
-          end if;
-          
-        when calculate_discrepancy =>
-          discrepancy <= discrepancy xor discrepancy_product;
-
-        when prepare_polynomials =>
-          temp_sigma <= sigma;
-          
-          sigma_A <= theta;
-          sigma_B <= sigma;
-
-          sigmaX_A <= discrepancy;
-          sigmaX_B <= B;
-          
-        when update_signals =>
-          -- In the case that the discrepancy is different from zero and the
-          -- current index is smaller than twice the polynomial's length the
-          -- connection polynomial has to be updated, along with the L and
-          -- theta variables.
-          sigma(0) <= sigma_product(0);
-          sigma(1) <= sigma_product(1) xor sigmaX_product(0);
-          sigma(2) <= sigma_product(2) xor sigmaX_product(1);
-          sigma(3) <= sigma_product(3) xor sigmaX_product(2);
-          sigma(4) <= sigma_product(4) xor sigmaX_product(3);
-          sigma(5) <= sigma_product(5) xor sigmaX_product(4);
-          sigma(6) <= sigma_product(6) xor sigmaX_product(5);
-          sigma(7) <= sigma_product(7) xor sigmaX_product(6);
-          sigma(8) <= sigma_product(8) xor sigmaX_product(7);
-          
-          if lambda = '1' then
-            B <= temp_sigma;
-
-            theta <= discrepancy;
-            L     <= index - L + 1;
-            
-          elsif lambda = '0' then
-            B(0) <= (others => '0');
-            B(1) <= B(0);
-            B(2) <= B(1);
-            B(3) <= B(2);
-            B(4) <= B(3);
-            B(5) <= B(4);
-            B(6) <= B(5);
-            B(7) <= B(6);
-            B(8) <= B(7);
-
-            theta <= theta;
-            L     <= L;
-          end if;
-
-          if index = (T2 - 1) then
-            index <= 0;
-          else
-            index <= index + 1;
-          end if;
-
-          discrepancy       <= (others => '0');
-          discrepancy_index <= 0;
-          
-        when prepare_omega =>
-          -- After the error locator polynomial is calculated, the error
-          -- evaluator polynomial is determined
-          -- The polynomial has the form
-          -- (syndrome * error_locator) mod (x^2t)
-          sigma_A <= syndrome(index);
-          sigma_B <= sigma;
-          
-        when calculate_omega =>
-          omega_temp(index)     <= omega_temp(index) xor sigma_product(0);
-          omega_temp(index + 1) <= omega_temp(index + 1) xor sigma_product(1);
-          omega_temp(index + 2) <= omega_temp(index + 2) xor sigma_product(2);
-          omega_temp(index + 3) <= omega_temp(index + 3) xor sigma_product(3);
-          omega_temp(index + 4) <= omega_temp(index + 4) xor sigma_product(4);
-          omega_temp(index + 5) <= omega_temp(index + 5) xor sigma_product(5);
-          omega_temp(index + 6) <= omega_temp(index + 6) xor sigma_product(6);
-          omega_temp(index + 7) <= omega_temp(index + 7) xor sigma_product(7);
-          omega_temp(index + 8) <= omega_temp(index + 8) xor sigma_product(8);
-
-          index <= index + 1;
-          
-        when set_done =>
-          done            <= '1';
-          error_locator   <= sigma;
-          error_evaluator(0) <= omega_temp(0);
-          error_evaluator(1) <= omega_temp(1);
-          error_evaluator(2) <= omega_temp(2);
-          error_evaluator(3) <= omega_temp(3);
-          error_evaluator(4) <= omega_temp(4);
-          error_evaluator(5) <= omega_temp(5);
-          error_evaluator(6) <= omega_temp(6);
-          error_evaluator(7) <= omega_temp(7);
-          error_evaluator(8) <= omega_temp(8);
-          error_evaluator(9) <= omega_temp(9);
-          error_evaluator(10) <= omega_temp(10);
-          error_evaluator(11) <= omega_temp(11);
-          error_evaluator(12) <= omega_temp(12);
-          error_evaluator(13) <= omega_temp(13);
-          error_evaluator(14) <= omega_temp(14);
-          error_evaluator(15) <= omega_temp(15);
-          
-        when others =>
-          null;
-          
-      end case;
+      if reset = '1' or enable = '1' then
+        phase <= "00";
+      elsif enable_locator = '1' then
+        if locator_counter <= T2 - 1 then
+          phase <= phase + 1;
+        end if;
+      end if;
     end if;
   end process;
+
+  -----------------------------------------------------------------------------
+  -- Error locator polynomial counter control
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' or enable = '1' then
+        locator_counter <= (others => '0');
+      elsif phase = "11" and locator_counter < T2 then
+        locator_counter <= locator_counter + 1;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Syndrome register used for the discrepancy calculation
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        discrepancy_syndromes <= (others => (others => '0'));
+      elsif enable = '1' then
+        discrepancy_syndromes(0) <= syndrome(0);
+        for i in 1 to T2 - 1 loop
+          discrepancy_syndromes(i) <= syndrome(T2 - i);
+        end loop;
+      elsif enable_locator = '1' and phase = "11" then
+        discrepancy_syndromes <= discrepancy_syndromes(T2 - 1) & discrepancy_syndromes(0 to T2 - 2);
+      elsif locator_counter = T2 then
+        if enable_evaluator = '0' then
+          discrepancy_syndromes <= syndrome;
+        elsif enable_evaluator = '1' then
+          discrepancy_syndromes <= all_zeros & discrepancy_syndromes(0 to T2 - 2);
+        end if;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Calculate the discrepancy
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' or phase = "11" then
+        discrepancy <= (others => '0');
+      elsif phase = "00" and enable_locator = '1' then
+        discrepancy <= discrepancy
+                       xor multiplicator_output(0)
+                       xor multiplicator_output(1)
+                       xor multiplicator_output(2)
+                       xor multiplicator_output(3)
+                       xor multiplicator_output(4)
+                       xor multiplicator_output(5)
+                       xor multiplicator_output(6)
+                       xor multiplicator_output(7)
+                       xor multiplicator_output(8)
+                       xor multiplicator_output(9)
+                       xor multiplicator_output(10)
+                       xor multiplicator_output(11)
+                       xor multiplicator_output(12)
+                       xor multiplicator_output(13)
+                       xor multiplicator_output(14)
+                       xor multiplicator_output(15);
+      end if;
+    end if;
+  end process;
+
+  ------------------------------------------------------------------------------
+  -- Determine error locator polynomial
+  ------------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' or enable = '1' then
+        sigma    <= (others => (others => '0'));
+        sigma(0) <= (0      => '1', others => '0');
+      elsif phase = "11" and enable_locator = '1' then
+        sigma(0) <= temp_sigma(0);
+        for i in 1 to T2 - 1 loop
+          sigma(i) <= temp_sigma(i) xor multiplicator_output(i - 1);
+        end loop;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Error locator polynomial helper
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        temp_sigma    <= (others => (others => '0'));
+        temp_sigma(0) <= (0      => '1', others => '0');
+      elsif enable_locator = '1' then
+        if phase = "01" then
+          temp_sigma <= multiplicator_output;
+        end if;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Control polynomial B
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        B    <= (others => (others => '0'));
+        B(0) <= (0      => '1', others => '0');
+      elsif phase = "11" and locator_counter < T2 then
+        if delta = '0' then
+          B <= all_zeros & B(0 to T2 - 2);
+        else
+          B <= sigma;
+        end if;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Keep track of the length of the error locator polynomial
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        L <= (others => '0');
+      elsif phase = "10" then
+        if delta = '0' then
+          L <= L;
+        elsif delta = '1' then
+          L <= locator_counter - L + 1;
+        end if;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Control theta
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        theta <= (0 => '1', others => '0');
+      elsif phase = "10" then
+        if delta = '0' then
+          theta <= theta;
+        else
+          theta <= discrepancy;
+        end if;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Enable error evaluator polynomial calculation
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' or evaluator_counter = T2 - 1 then
+        enable_evaluator <= '0';
+      elsif locator_counter = T2 and enable_locator = '0' then
+        enable_evaluator <= '1';
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Error evaluator polynomial counter control
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        evaluator_counter <= (others => '0');
+      elsif enable_evaluator = '1' and evaluator_counter < T2 - 1 then
+        evaluator_counter <= evaluator_counter + 1;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Determine error evaluator polynomial
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' or enable = '1' then
+        omega <= (others => (others => '0'));
+      elsif enable_evaluator = '1' then
+        for i in 0 to T2 - 1 loop
+          omega(i) <= omega(i) xor multiplicator_output(i);
+        end loop;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Signal done
+  -----------------------------------------------------------------------------
+  process(evaluator_counter)
+  begin
+    if evaluator_counter /= T2 - 1 then
+      done <= '0';
+    else
+      done <= '1';
+    end if;
+  end process;
+
+  error_locator   <= T_array(sigma(0 to T));
+  error_evaluator <= omega;
 end architecture;

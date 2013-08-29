@@ -16,15 +16,17 @@ architecture Syndrome_tb of Syndrome_tb is
       received_vector : in field_element;
 
       done     : out std_logic;
-      no_error : out std_logic;
-      syndrome : out syndrome_vector);
+      syndrome : out T2less1_array);
   end component;
 
-  signal clk, rst, ena, dne, noerr : std_logic;
-  signal rcv                       : field_element;
-  signal sdm                       : syndrome_vector;
+  signal clk   : std_logic;
+  signal rst   : std_logic;
+  signal ena   : std_logic;
+  signal dne   : std_logic;
+  signal rcv   : field_element;
+  signal sdm   : T2less1_array;
 
-  file fd_in : text open read_mode is "../../Tests/received.txt";
+  file fd_in  : text open read_mode is "../../Tests/received.txt";
   file fd_out : text open write_mode is "../../Tests/syndrome_vhdl.txt";
   
 begin
@@ -35,7 +37,6 @@ begin
       enable          => ena,
       received_vector => rcv,
       done            => dne,
-      no_error        => noerr,
       syndrome        => sdm);
 
   process
@@ -61,8 +62,10 @@ begin
     rcv <= (others => '0');
     ena <= '0';
     wait until clk'event and clk = '1' and rst = '0';
+    wait for 10 ns;
     ena <= '1';
     wait for 10 ns;
+    ena <= '0';
     
     while not endfile(fd_in) loop
       readline (fd_in, line_num);
@@ -70,8 +73,7 @@ begin
       rcv <= value;
       wait until clk = '1';
     end loop;
-
-    ena <= '0';
+    
     wait;
   end process;
 

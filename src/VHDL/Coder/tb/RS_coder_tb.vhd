@@ -11,32 +11,35 @@ end entity;
 architecture RS_coder_tb of RS_coder_tb is
   component RS_coder is
     port (
-      clock    : in  std_logic;
-      reset    : in  std_logic;
-      start    : in  std_logic;
-      message  : in  field_element;
-      done     : out std_logic;
-      codeword : out field_element);
+      clock         : in  std_logic;
+      reset         : in  std_logic;
+      message_start : in  std_logic;
+      message_end   : in  std_logic;
+      message       : in  field_element;
+      done          : out std_logic;
+      codeword      : out field_element);
   end component;
 
-  signal clk  : std_logic;
-  signal rst  : std_logic;
-  signal str  : std_logic;
-  signal din  : field_element := last_element;
-  signal dne  : std_logic;
-  signal dout : field_element;
+  signal clk   : std_logic;
+  signal rst   : std_logic;
+  signal m_str : std_logic;
+  signal m_end : std_logic;
+  signal din   : field_element;
+  signal dne   : std_logic;
+  signal dout  : field_element;
 
-  file fd_in : text open read_mode is "../../Tests/message.txt";
+  file fd_in  : text open read_mode is "../../Tests/message.txt";
   file fd_out : text open write_mode is "../../Tests/codeword_vhdl.txt";
 begin
   coder : RS_coder
     port map (
-      clock    => clk,
-      reset    => rst,
-      start    => str,
-      message  => din,
-      done     => dne,
-      codeword => dout);
+      clock         => clk,
+      reset         => rst,
+      message_start => m_str,
+      message_end   => m_end,
+      message       => din,
+      done          => dne,
+      codeword      => dout);
 
   process
   begin
@@ -48,33 +51,52 @@ begin
 
   process
   begin
-    rst <= '1';
-    str <= '0';
+    rst   <= '1';
+    m_str <= '0';
     wait for 20 ns;
-    rst <= '0';
-    str <= '1';
+    rst   <= '0';
+    m_str <= '1';
     wait for 10 ns;
-    str <= '0';
+    m_str <= '0';
     wait;
   end process;
 
   process
     variable line_num : line;
-    variable value : field_element;
+    variable value    : field_element;
+    variable counter  : integer := 0;
   begin
-    wait until clk'event and clk = '1' and str = '0' and rst = '0';
-    while not endfile(fd_in) loop
-      readline (fd_in, line_num);
-      read (line_num, value);
-      din <= value;
-      wait until clk = '1';
-    end loop;
+    m_end <= '0';
+    din <= "00000000";
+    wait until clk'event and clk = '1' and m_str = '0' and rst = '0';
+-- teste de palavra inteira -> k bytes
+    --while not endfile(fd_in) loop
+    --  readline (fd_in, line_num);
+    --  read (line_num, value);
+    --  din     <= value;
+    --  counter := counter + 1;
+    --  if counter = 239 then
+    --    m_end <= '1';
+    --  end if;
+    --  wait until clk = '1';
+    --end loop;
+
+-- teste de mensagem encurtada -> <k bytes
+    din <= "00000001";
+    wait until clk'event and clk = '1';
+    
+    din <= "00000001";
+    m_end <= '1';
+
+    wait until clk'event and clk = '1';
+    m_end <= '0';
+    wait;
   end process;
 
   process
     variable line_num : line;
   begin
-    wait until clk'event and clk = '1' and str = '0' and rst = '0';
+    wait until clk'event and clk = '1' and m_str = '0' and rst = '0';
     write(line_num, dout);
     writeline(fd_out, line_num);
   end process;

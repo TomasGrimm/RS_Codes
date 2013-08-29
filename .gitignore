@@ -5,3 +5,11 @@
 *.txt
 estimated_log
 codeword_log
+
+# compilation tools files
+transcript
+*.wlf
+work/
+
+# emacs buffer files
+*#

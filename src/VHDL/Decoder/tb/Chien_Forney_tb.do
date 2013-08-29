@@ -30,16 +30,12 @@ add wave -label partial_error_evaluator /Chien_Forney_tb/CF/partial_error_evalua
 add wave -label "error_locator_out" /Chien_Forney_tb/CF/error_locator_out
 add wave -label "error_evaluator_out" /Chien_Forney_tb/CF/error_evaluator_out
 add wave -label "sigma_input" /Chien_Forney_tb/CF/sigma_input
-add wave -label "iterations" /Chien_Forney_tb/CF/iterations_counter
-add wave -label "alpha" /Chien_Forney_tb/CF/alpha
+add wave -label "counter" /Chien_Forney_tb/CF/counter
 add wave -label "sigma_sum" /Chien_Forney_tb/CF/sigma_sum
 add wave -label "sigma_derived" /Chien_Forney_tb/CF/sigma_derived
 add wave -label "sigma_inverted" /Chien_Forney_tb/CF/sigma_inverted
 add wave -label "omega_sum" /Chien_Forney_tb/CF/omega_sum
-add wave -label "sum_and_compare" /Chien_Forney_tb/CF/sum_and_compare
-add wave -label process_alpha_zero /Chien_Forney_tb/CF/process_alpha_zero
-add wave -label current_state /Chien_Forney_tb/CF/current_state
-add wave -label next_state /Chien_Forney_tb/CF/next_state
+add wave -label "enable_op" /Chien_Forney_tb/CF/enable_operation
 
 run 2700 ns
 wave zoom full

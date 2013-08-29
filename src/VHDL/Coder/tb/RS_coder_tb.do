@@ -14,7 +14,8 @@ view wave
 
 add wave /RS_coder_tb/clk
 add wave /RS_coder_tb/rst
-add wave /RS_coder_tb/str
+add wave /RS_coder_tb/m_str
+add wave /RS_coder_tb/m_end
 add wave /RS_coder_tb/din
 add wave /RS_coder_tb/dne
 add wave /RS_coder_tb/dout
@@ -29,7 +30,6 @@ add wave -label CS /RS_coder_tb/coder/encode/current_state
 add wave -label NS /RS_coder_tb/coder/encode/next_state
 add wave -label "msg_ctr" -radix unsigned /RS_coder_tb/coder/encode/LFSR_counter
 add wave -label "prt_ctr" -radix unsigned /RS_coder_tb/coder/encode/parity_counter
-add wave -label "freeze" /RS_coder_tb/coder/encode/freeze
 add wave -label "feed_through" /RS_coder_tb/coder/encode/feed_through
 add wave -label "multiplicand_poly" /RS_coder_tb/coder/encode/multiplicand_poly
 add wave -label "intermediary_poly" /RS_coder_tb/coder/encode/intermediary_poly

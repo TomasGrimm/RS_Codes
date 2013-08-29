@@ -19,43 +19,26 @@ add wave -label eep /BerlekampMassey_tb/eep
 
 add wave -divider
 
-add wave -label syn /BerlekampMassey_tb/syn
+add wave -label enable_locator /BerlekampMassey_tb/BM/enable_locator
+add wave -label enable_evaluator /BerlekampMassey_tb/BM/enable_evaluator
 add wave -label discrepancy /BerlekampMassey_tb/BM/discrepancy
-add wave -label sigma /BerlekampMassey_tb/BM/sigma
-add wave -label L /BerlekampMassey_tb/BM/L
+add wave -label sigma /berlekampmassey_tb/BM/sigma
+add wave -label temp_sigma /berlekampmassey_tb/BM/temp_sigma
+add wave -label L -radix unsigned /berlekampmassey_tb/BM/L
 add wave -label B /BerlekampMassey_tb/BM/B
-add wave -label lambda /BerlekampMassey_tb/BM/lambda
+add wave -label delta /BerlekampMassey_tb/BM/delta
 add wave -label theta /BerlekampMassey_tb/BM/theta
 
-add wave -label CS /BerlekampMassey_tb/BM/current_state
-#add wave -label NS /BerlekampMassey_tb/BM/next_state
-#add wave -label sigma /BerlekampMassey_tb/BM/sigma
-#add wave -label B /BerlekampMassey_tb/BM/B
-#add wave -label discrepancy /BerlekampMassey_tb/BM/discrepancy
-#add wave -label theta /BerlekampMassey_tb/BM/theta
-#add wave -label L /BerlekampMassey_tb/BM/L
-#add wave -label lambda /BerlekampMassey_tb/BM/lambda
+add wave -divider
 
-#add wave -divider
-
-#add wave -label index /BerlekampMassey_tb/BM/index
-#add wave -label discrepancy_index /BerlekampMassey_tb/BM/discrepancy_index
-#add wave -label discrepancy_A /BerlekampMassey_tb/BM/discrepancy_A
-#add wave -label discrepancy_B /BerlekampMassey_tb/BM/discrepancy_B
-#add wave -label discrepancy_product /BerlekampMassey_tb/BM/discrepancy_product
-
-#add wave -divider
-
-#add wave -label sigma_A /BerlekampMassey_tb/BM/sigma_A
-#add wave -label sigma_B /BerlekampMassey_tb/BM/sigma_B
-#add wave -label sigma_product /BerlekampMassey_tb/BM/sigma_product
-#add wave -label sigmaX_A /BerlekampMassey_tb/BM/sigmaX_A
-#add wave -label sigmaX_B /BerlekampMassey_tb/BM/sigmaX_B
-#add wave -label sigmaX_product /BerlekampMassey_tb/BM/sigmaX_product
-
-#add wave -divider
-
-#add wave -label double_L /BerlekampMassey_tb/BM/double_L
+add wave -label locator_counter -radix unsigned /berlekampmassey_tb/BM/locator_counter
+add wave -label phase /berlekampmassey_tb/BM/phase
+add wave -label discrepancy_syndromes /berlekampmassey_tb/BM/discrepancy_syndromes
+add wave -label mult_in1 /berlekampmassey_tb/BM/multiplicator_input_1
+add wave -label mult_in2 /berlekampmassey_tb/BM/multiplicator_input_2
+add wave -label mult_out /berlekampmassey_tb/BM/multiplicator_output
+add wave -label omega /berlekampmassey_tb/BM/omega
+add wave -label evaluator_counter -radix unsigned /berlekampmassey_tb/BM/evaluator_counter
 
 run 1500 ns
 wave zoom full
