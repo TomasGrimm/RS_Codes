@@ -2,6 +2,10 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use work.ReedSolomon.all;
 
+-- Inversion table used by the Chien Search and Forney's algorithm module
+
+-- output = (input)^-1
+
 entity inversion_table is
   port (
     input  : in  field_element;
@@ -9,7 +13,7 @@ entity inversion_table is
 end inversion_table;
 
 architecture inversion_table of inversion_table is
-begin  -- inversion_table
+begin
   output <= "00000000" when input = "00000000" else
             "00000001" when input = "00000001" else
             "00000010" when input = "10001110" else

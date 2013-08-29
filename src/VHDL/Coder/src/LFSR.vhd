@@ -39,17 +39,15 @@ architecture LFSR of LFSR is
   signal parity_counter : unsigned(3 downto 0);
   
 begin
-  alphas : for I in 0 to T2 - 1 generate
-    alphaX : field_element_multiplier
-      port map (
-        feed_through,
-        gen_poly(I),
-        multiplicand_poly(I));
-  end generate alphas;
-
-  -- multiplication of the received symbol by the highest order element from the partial polynomial
+  -- Multiplication of the received symbol by the highest order element from the partial polynomial
   feed_through <= (others => '0') when reset = '1' or start = '1' else
                   message xor intermediary_poly(T2 - 1);
+
+  -- Multiplication of the feed_through signal by each of the generator
+  -- polynomial's coefficients.
+  alphas : for I in 0 to T2 - 1 generate
+    alphaX : field_element_multiplier port map (feed_through, gen_poly(I), multiplicand_poly(I));
+  end generate alphas;
   
   process(clock)
   begin
@@ -112,6 +110,8 @@ begin
         when calculate_parity =>
           LFSR_counter <= LFSR_counter + 1;
 
+          -- Summation of the current multiplications by the results from the
+          -- previous cycle
           if freeze = '0' then
             intermediary_poly(0)  <= multiplicand_poly(0);
             intermediary_poly(1)  <= multiplicand_poly(1) xor intermediary_poly(0);
@@ -131,6 +131,8 @@ begin
             intermediary_poly(15) <= multiplicand_poly(15) xor intermediary_poly(14);
           end if;
 
+          -- control signals to assure the exact quantity of cycles for the
+          -- syndrome calculation
           if LFSR_counter = K_LENGTH - 1 then
             freeze           <= '1';
             calculation_done <= '1';

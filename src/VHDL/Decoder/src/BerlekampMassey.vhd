@@ -26,13 +26,6 @@ architecture BerlekampMassey of BerlekampMassey is
       w : out field_element);
   end component;
 
-  component scalar_multiplier is
-    port (
-      element    : in  field_element;
-      polynomial : in  key_equation;
-      multiplied : out key_equation);
-  end component;
-
   type   states is (idle, prepare_discrepancy, calculate_discrepancy, prepare_polynomials, update_signals, prepare_omega, calculate_omega, set_done);
   signal current_state, next_state : states;
 
@@ -63,24 +56,16 @@ architecture BerlekampMassey of BerlekampMassey is
   signal omega_temp : temp_array;
   
 begin
-  discrepancy_multiplier : field_element_multiplier
-    port map (
-      u => discrepancy_A,
-      v => discrepancy_B,
-      w => discrepancy_product);
+  discrepancy_multiplier : field_element_multiplier port map (discrepancy_A, discrepancy_B, discrepancy_product);
 
-  sigma_multiplier : scalar_multiplier
-    port map (
-      element    => sigma_A,
-      polynomial => sigma_B,
-      multiplied => sigma_product);
-
-  sigmaX_multiplier : scalar_multiplier
-    port map (
-      element    => sigmaX_A,
-      polynomial => sigmaX_B,
-      multiplied => sigmaX_product);
-
+  sigma_multiplier : for I in 0 to T generate
+    multiplier : field_element_multiplier port map(sigma_A, sigma_B(I), sigma_product(I));
+  end generate sigma_multiplier;
+  
+  sigmaX_multiplier : for I in 0 to T generate
+    multiplier : field_element_multiplier port map(sigmaX_A, sigmaX_B(I), sigmaX_product(I));
+  end generate sigmaX_multiplier;
+  
   lambda <= '1' when (discrepancy /= all_zeros) and ((L + L) <= index) else
             '0';
 
@@ -176,6 +161,8 @@ begin
 
           omega_temp <= (others => (others => '0'));
 
+        -- The discrepancy is calculated according to the current index and the
+        -- value of L
         when prepare_discrepancy =>
           discrepancy_A <= sigma(discrepancy_index);
           discrepancy_B <= syndrome(index - discrepancy_index);
@@ -189,7 +176,7 @@ begin
           
         when calculate_discrepancy =>
           discrepancy <= discrepancy xor discrepancy_product;
-          
+
         when prepare_polynomials =>
           temp_sigma <= sigma;
           
@@ -200,6 +187,10 @@ begin
           sigmaX_B <= B;
           
         when update_signals =>
+          -- In the case that the discrepancy is different from zero and the
+          -- current index is smaller than twice the polynomial's length the
+          -- connection polynomial has to be updated, along with the L and
+          -- theta variables.
           sigma(0) <= sigma_product(0);
           sigma(1) <= sigma_product(1) xor sigmaX_product(0);
           sigma(2) <= sigma_product(2) xor sigmaX_product(1);
@@ -209,7 +200,7 @@ begin
           sigma(6) <= sigma_product(6) xor sigmaX_product(5);
           sigma(7) <= sigma_product(7) xor sigmaX_product(6);
           sigma(8) <= sigma_product(8) xor sigmaX_product(7);
-
+          
           if lambda = '1' then
             B <= temp_sigma;
 
@@ -241,6 +232,10 @@ begin
           discrepancy_index <= 0;
           
         when prepare_omega =>
+          -- After the error locator polynomial is calculated, the error
+          -- evaluator polynomial is determined
+          -- The polynomial has the form
+          -- (syndrome * error_locator) mod (x^2t)
           sigma_A <= syndrome(index);
           sigma_B <= sigma;
           

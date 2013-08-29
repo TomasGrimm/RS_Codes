@@ -1,0 +1,11 @@
+vlib work
+
+vcom ../../Auxiliary/src/ReedSolomon.vhd
+vcom ../../Auxiliary/src/field_element_multiplier.vhd
+vcom ../../Auxiliary/src/inversion_table.vhd
+vcom -check_synthesis ../src/Syndrome.vhd
+vcom -check_synthesis ../src/BerlekampMassey.vhd
+vcom -check_synthesis ../src/Chien_Forney.vhd
+vcom -check_synthesis ../src/RS_decoder.vhd
+
+vcom RS_decoder_tb.vhd

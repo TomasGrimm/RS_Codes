@@ -1,2 +1,7 @@
 # exclude temp and buffer files
 *~
+
+# simulation files
+*.txt
+estimated_log
+codeword_log

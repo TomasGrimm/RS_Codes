@@ -1,17 +1,5 @@
 quit -sim
 
-vlib work
-
-vcom ../../Auxiliary/src/ReedSolomon.vhd
-vcom ../../Auxiliary/src/field_element_multiplier.vhd
-vcom ../../Auxiliary/src/inversion_table.vhd
-vcom -check_synthesis ../src/Syndrome.vhd
-vcom -check_synthesis ../src/BerlekampMassey.vhd
-vcom -check_synthesis ../src/Chien_Forney.vhd
-vcom -check_synthesis ../src/RS_decoder.vhd
-
-vcom RS_decoder_tb.vhd
-
 vsim -t ns work.RS_decoder_tb
 
 view wave
@@ -40,27 +28,7 @@ add wave -label root /RS_decoder_tb/decoder/cf_root
 add wave -label processing /RS_decoder_tb/decoder/cf_processing
 add wave -label received_is_codeword /RS_decoder_tb/decoder/received_is_codeword
 
-add wave -divider
-add wave  \
- /rs_decoder_tb/decoder/cf_module/current_state \
- /rs_decoder_tb/decoder/cf_module/next_state \
- /rs_decoder_tb/decoder/cf_module/processed \
- /rs_decoder_tb/decoder/cf_module/process_alpha_zero \
- /rs_decoder_tb/decoder/cf_module/sum_and_compare \
- /rs_decoder_tb/decoder/cf_module/alpha \
- /rs_decoder_tb/decoder/cf_module/omega_scaled \
- /rs_decoder_tb/decoder/cf_module/omega_sum \
- /rs_decoder_tb/decoder/cf_module/sigma_sum \
- /rs_decoder_tb/decoder/cf_module/sigma_derived \
- /rs_decoder_tb/decoder/cf_module/sigma_inverted \
- /rs_decoder_tb/decoder/cf_module/error_locator_out \
- /rs_decoder_tb/decoder/cf_module/partial_error_locator \
- /rs_decoder_tb/decoder/cf_module/sigma_input \
- /rs_decoder_tb/decoder/cf_module/error_evaluator_out \
- /rs_decoder_tb/decoder/cf_module/partial_error_evaluator \
- /rs_decoder_tb/decoder/cf_module/iterations_counter
-
 run 9000 ns
 #wave zoom full
 
-#quit -f
+quit -f

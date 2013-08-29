@@ -2,21 +2,21 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 
 package ReedSolomon is
-  constant N_LENGTH      : natural := 255;  -- codeword size
+  constant N_LENGTH      : natural := 255;  -- maximum codeword size
   constant K_LENGTH      : natural := 239;  -- message symbols
   constant SYMBOL_LENGTH : natural := 8;    -- number of bits per symbol
-  constant T             : natural := 8;    -- code's correction radius (t)
+  constant T             : natural := 8;    -- code's correction capability
   constant T2            : natural := 16;   -- 2*t
 
-  subtype field_element is std_logic_vector(SYMBOL_LENGTH - 1 downto 0);
+  subtype field_element is std_logic_vector(SYMBOL_LENGTH - 1 downto 0);  -- message and codeword symbol
 
-  constant alpha_zero   : field_element;
-  constant last_element : field_element;
-  constant all_zeros    : field_element;
+  constant alpha_zero   : field_element;  -- representation of alpha^0
+  constant last_element : field_element;  -- representation of alpha^254
+  constant all_zeros    : field_element;  -- representation of the zero symbol
   
   type codeword_array       is array (0 to N_LENGTH - 1) of field_element;  -- array for codewords
   type key_equation         is array (0 to T)            of field_element;  -- equation that locates the errors' positions
-  type omega_array          is array (0 to T2 - 1)       of field_element;  -- omega = (syndrome * key_equation) mod x^2t
+  type omega_array          is array (0 to T2 - 1)       of field_element;  -- equation that evaluates the errors' magnitudes
 
   type generator_polynomial is array (0 to T2 - 1)       of field_element;
   constant gen_poly : generator_polynomial;  -- generator polynomial

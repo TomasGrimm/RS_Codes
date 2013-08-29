@@ -2,6 +2,10 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use work.ReedSolomon.all;
 
+-- Chien search and Forney's algorithm module
+-- This module has been designed following the architecture from Yuan's "A
+-- Practical Guide to Error-Control Coding Using MATLAB" page 148.
+
 entity Chien_Forney is
   port (
     clock           : in std_logic;     -- clock signal
@@ -31,12 +35,12 @@ architecture Chien_Forney of Chien_Forney is
       output : out field_element);
   end component;
 
-  type   states is (idle, chienize, set_done);
+  type   states is (idle, capture_input, chienize, set_done);
   signal current_state, next_state : states;
 
-  signal first_iteration : std_logic;
-  signal processed       : std_logic;
-  signal sum_and_compare : std_logic;
+  signal processed          : std_logic;
+  signal process_alpha_zero : std_logic;
+  signal sum_and_compare    : std_logic;
 
   signal alpha          : field_element;
   signal omega_scaled   : field_element;
@@ -51,6 +55,7 @@ architecture Chien_Forney of Chien_Forney is
 
   signal error_evaluator_out     : omega_array;
   signal partial_error_evaluator : omega_array;
+  signal omega_input             : omega_array;
 
   signal iterations_counter : integer;
 
@@ -65,6 +70,7 @@ architecture Chien_Forney of Chien_Forney is
                                            "10000000",
                                            "00011101");
 
+  constant omega_alpha_zero : omega_array := (others => "00000001");
   constant omega_alphas : omega_array := ("00000001",
                                           "00000010",
                                           "00000100",
@@ -86,20 +92,36 @@ begin
   processing  <= sum_and_compare;
   error_index <= iterations_counter;
 
+  -- When the Chien search starts, the first element to multiply the error
+  -- locator polynomial is alpha^0, and as all the powers of alpha^0 are equal to
+  -- alpha^0, the first iteration uses the variable sigma_alpha_zero.
+  -- For the other n - 1 iterations, the variable sigma_alphas is used, so that
+  -- every new iteration has the previous result multiplied by alpha.
   sigma_input <= (others => (others => '0')) when enable = '1' else
                  sigma_alpha_zero when iterations_counter = 0 else
                  sigma_alphas;
-  
+
+  -- When the Forney algorithm starts, the first element to multiply the error
+  -- evaluator polynomial is alpha^0, and as all the powers of alpha^0 are equal to
+  -- alpha^0, the first iteration uses the variable omega_alpha_zero.
+  -- For the other n - 1 iterations, the variable omega_alphas is used, so that
+  -- every new iteration has the previous result multiplied by alpha.
+  omega_input <= (others => (others => '0')) when enable = '1' else
+                 omega_alpha_zero when iterations_counter = 0 else
+                 omega_alphas;
+
+  -- The error locator polynomial has to be evaluated for each value of alpha
   error_locator_terms : for I in 0 to T generate
     term : field_element_multiplier port map (sigma_input(I), partial_error_locator(I), error_locator_out(I));
   end generate;
 
+  -- The error evaluator polynomial has to be evaluated for each value of alpha
   error_evaluator_terms : for J in 0 to (T2 - 1) generate
-    term : field_element_multiplier port map (omega_alphas(J), partial_error_evaluator(J), error_evaluator_out(J));
+    term : field_element_multiplier port map (omega_input(J), partial_error_evaluator(J), error_evaluator_out(J));
   end generate;
 
-  sigma_sum <= (others => '0') when sum_and_compare = '0' else
-               error_locator_out(0) xor
+  -- After being evaluated, all the terms from the error locator polynomial must be summed.
+  sigma_sum <= error_locator_out(0) xor
                error_locator_out(1) xor
                error_locator_out(2) xor
                error_locator_out(3) xor
@@ -107,19 +129,24 @@ begin
                error_locator_out(5) xor
                error_locator_out(6) xor
                error_locator_out(7) xor
-               error_locator_out(8);
+               error_locator_out(8) when sum_and_compare = '1' or process_alpha_zero = '1' else
+               (others => '0');
 
+  -- If the error locator polynomial is evaluated as zero, than a root has been
+  -- found
   is_root <= '1' when sigma_sum = all_zeros and sum_and_compare = '1' else
              '0';
-  
-  sigma_derived <= (others => '0') when sum_and_compare = '0' else
-                   error_locator_out(1) xor
+
+  -- At the same time that the error locator polynomial is evaluated, its
+  -- derivative is also evaluated to be used in the calculation of the error magnitude.
+  sigma_derived <= error_locator_out(1) xor
                    error_locator_out(3) xor
                    error_locator_out(5) xor
-                   error_locator_out(7);
+                   error_locator_out(7) when sum_and_compare = '1' or process_alpha_zero = '1' else
+                   (others => '0');
 
-  omega_sum <= (others => '0') when sum_and_compare = '0' else
-               error_evaluator_out(0) xor
+  -- After being evaluated, all the terms from the error locator polynomial must be summed.
+  omega_sum <= error_evaluator_out(0) xor
                error_evaluator_out(1) xor
                error_evaluator_out(2) xor
                error_evaluator_out(3) xor
@@ -134,10 +161,19 @@ begin
                error_evaluator_out(12) xor
                error_evaluator_out(13) xor
                error_evaluator_out(14) xor
-               error_evaluator_out(15);
+               error_evaluator_out(15) when sum_and_compare = '1' or process_alpha_zero = '1' else
+               (others => '0');
 
+  -- To avoid the division operation, the result from the derivative is inverted.
   inverter : inversion_table port map (sigma_derived, sigma_inverted);
 
+  -- To nullify the effect of the alpha^i being multiplied to the error locator
+  -- derivative, the error evaluator is multiplied by alpha^i
+  omega_scaling : field_element_multiplier port map (omega_sum, alpha, omega_scaled);
+
+  -- Finally, the error magnitude is calculated as the multiplication of the
+  -- scaled version of the result from the error evaluator polynomial by the
+  -- derivative of the error locator polynomial.
   magnitude_calculation : field_element_multiplier port map (omega_sum, sigma_inverted, error_magnitude);
 
   process(clock)
@@ -156,11 +192,14 @@ begin
     case current_state is
       when idle =>
         if enable = '1' then
-          next_state <= chienize;
+          next_state <= capture_input;
         else
           next_state <= idle;
         end if;
 
+      when capture_input =>
+        next_state <= chienize;
+        
       when chienize =>
         if iterations_counter = 0 and processed = '1' then
           next_state <= set_done;
@@ -179,25 +218,39 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
+      done               <= '0';
+      process_alpha_zero <= '0';
+      sum_and_compare    <= '0';
+
       case current_state is
         when idle =>
-          done            <= '0';
-          sum_and_compare <= '0';
-          first_iteration <= '1';
-          alpha           <= last_element;
+          alpha <= last_element;
 
           partial_error_locator   <= (others => (others => '0'));
           partial_error_evaluator <= (others => (others => '0'));
+
+        when capture_input =>
+          -- In this state the inputs are captured and the calulation for
+          -- alpha^0 is performed, so that, starting in the next clock cycle,
+          -- the first calculated magnitude is added to the highest degree term
+          -- of the received polynomial, should it have any errors.
+          partial_error_locator   <= error_locator;
+          partial_error_evaluator <= error_evaluator;
+
+          process_alpha_zero <= '1';
+
+          alpha(7) <= alpha(6);
+          alpha(6) <= alpha(5);
+          alpha(5) <= alpha(4);
+          alpha(4) <= alpha(3) xor alpha(7);
+          alpha(3) <= alpha(2) xor alpha(7);
+          alpha(2) <= alpha(1) xor alpha(7);
+          alpha(1) <= alpha(0);
+          alpha(0) <= alpha(7);
           
         when chienize =>
-          if first_iteration = '1' then
-            partial_error_locator   <= error_locator;
-            partial_error_evaluator <= error_evaluator;
-            first_iteration         <= '0';
-          else
-            partial_error_locator   <= error_locator_out;
-            partial_error_evaluator <= error_evaluator_out;
-          end if;
+          partial_error_locator   <= error_locator_out;
+          partial_error_evaluator <= error_evaluator_out;
 
           sum_and_compare <= '1';
 
@@ -211,8 +264,7 @@ begin
           alpha(0) <= alpha(7);
           
         when set_done =>
-          done            <= '1';
-          sum_and_compare <= '0';
+          done <= '1';
           
         when others =>
           null;
@@ -234,10 +286,10 @@ begin
         else
           iterations_counter <= 0;
         end if;
+      end if;
 
-        if alpha = alpha_zero then
-          iterations_counter <= N_LENGTH - 1;
-        end if;
+      if alpha = alpha_zero then
+        iterations_counter <= N_LENGTH - 1;
       end if;
     end if;
   end process;

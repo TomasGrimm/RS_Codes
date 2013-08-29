@@ -25,19 +25,19 @@ add wave -label "error_magnitude" /Chien_Forney_tb/err_mag
 
 add wave -divider
 
+add wave -label partial_error_locator /Chien_Forney_tb/CF/partial_error_locator
+add wave -label partial_error_evaluator /Chien_Forney_tb/CF/partial_error_evaluator
 add wave -label "error_locator_out" /Chien_Forney_tb/CF/error_locator_out
 add wave -label "error_evaluator_out" /Chien_Forney_tb/CF/error_evaluator_out
 add wave -label "sigma_input" /Chien_Forney_tb/CF/sigma_input
 add wave -label "iterations" /Chien_Forney_tb/CF/iterations_counter
 add wave -label "alpha" /Chien_Forney_tb/CF/alpha
-add wave -label "alpha_not" /Chien_Forney_tb/CF/alpha_not
 add wave -label "sigma_sum" /Chien_Forney_tb/CF/sigma_sum
 add wave -label "sigma_derived" /Chien_Forney_tb/CF/sigma_derived
 add wave -label "sigma_inverted" /Chien_Forney_tb/CF/sigma_inverted
 add wave -label "omega_sum" /Chien_Forney_tb/CF/omega_sum
-add wave -label "omega_scaled" /Chien_Forney_tb/CF/omega_scaled
 add wave -label "sum_and_compare" /Chien_Forney_tb/CF/sum_and_compare
-add wave -label first_iter /Chien_Forney_tb/CF/first_iteration
+add wave -label process_alpha_zero /Chien_Forney_tb/CF/process_alpha_zero
 add wave -label current_state /Chien_Forney_tb/CF/current_state
 add wave -label next_state /Chien_Forney_tb/CF/next_state
 

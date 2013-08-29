@@ -4,7 +4,6 @@ vlib work
 
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
-vcom ../../Auxiliary/src/scalar_multiplier.vhd
 vcom ../src/BerlekampMassey.vhd 
 vcom BerlekampMassey_tb.vhd
 

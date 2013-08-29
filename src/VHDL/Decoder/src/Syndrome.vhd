@@ -5,6 +5,13 @@ use work.ReedSolomon.all;
 
 -- Syndrome calculation for a Reed-Solomon (255, 239) code
 
+-- The syndrome of the received polynomial is calculated by a Horner's rule-like
+-- equation, where the calculations begin with the highest degree element,
+-- which is the first to be received.
+-- After n iterations the process ends, and, if the resulting polynomial is
+-- zero, then no errors have been detected and no further processing is needed,
+-- otherwise, the next step is activated.
+
 entity Syndrome is
   port (
     clock           : in std_logic;
@@ -32,11 +39,7 @@ architecture Syndrome of Syndrome is
   
 begin
   multipliers : for I in 0 to T2 - 1 generate
-    synd : field_element_multiplier
-      port map (
-        u => syndromes(I),
-        v => alphas(I),
-        w => multiplications(I));
+    synd : field_element_multiplier port map (syndromes(I), alphas(I), multiplications(I));
   end generate multipliers;
 
   process(clock)

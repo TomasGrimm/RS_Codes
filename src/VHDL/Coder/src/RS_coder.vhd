@@ -25,7 +25,7 @@ architecture RS_coder of RS_coder is
       parity_shifted : out std_logic);
   end component LFSR;
 
-  signal parity_out : field_element;  -- shifts out the parity bits, one by one
+  signal parity_out : field_element;
   signal delay      : field_element;
 
   signal par_ready   : std_logic;
@@ -52,6 +52,9 @@ begin  -- RS
     end if;
   end process;
 
+  -- While the parity is being calculated, the message is output.
+  -- The cycle after the last message symbol is output the parity begins to be
+  -- shifted out.
   codeword <= delay when par_ready = '0' else
               parity_out;
   

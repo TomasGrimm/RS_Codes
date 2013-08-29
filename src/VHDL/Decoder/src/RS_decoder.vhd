@@ -127,6 +127,8 @@ begin
       error_index     => cf_index,
       error_magnitude => cf_magnitude);
 
+  -- After a module finishes its operation, its outputs are registered to be
+  -- used by the next.
   process(clock)
   begin
     if clock'event and clock = '1' then
@@ -145,7 +147,9 @@ begin
       end if;
     end if;
   end process;
-  
+
+  -- The received polynomial must be registered to be either corrected or
+  -- simply shifted out, in case the syndrome signals no errors were found.
   process(clock)
   begin
     if clock'event and clock = '1' then
@@ -176,6 +180,8 @@ begin
     end if;
   end process;
 
+  -- In case the received polynomial has no errors, this process controls the
+  -- output of its symbols.
   process(clock)
   begin
     if clock'event and clock = '1' then
@@ -198,7 +204,7 @@ begin
 
   data_out <= received(output_index) when output_codeword = '1' else
               received(cf_index) xor cf_magnitude when cf_root = '1' and cf_processing = '1' else
-              received(cf_index)                  when cf_processing = '1'                   else
+              received(cf_index)                  when cf_root = '0' and cf_processing = '1' else
               (others => '0');
 
   done <= '1' when decoding_done = '1' or cf_done = '1' else
