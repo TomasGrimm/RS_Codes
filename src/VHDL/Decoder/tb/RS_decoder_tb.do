@@ -5,10 +5,11 @@ vlib work
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
 vcom ../../Auxiliary/src/scalar_multiplier.vhd
-vcom ../src/Syndrome.vhd
-vcom ../src/BerlekampMassey.vhd
-vcom ../src/Chien_Forney.vhd
-vcom ../src/RS_decoder.vhd
+vcom ../../Auxiliary/src/polynomial_evaluator.vhd
+vcom -check_synthesis ../src/Syndrome.vhd
+vcom -check_synthesis ../src/BerlekampMassey.vhd
+vcom -check_synthesis ../src/Chien_Forney.vhd
+vcom -check_synthesis ../src/RS_decoder.vhd
 
 vcom RS_decoder_tb.vhd
 
@@ -28,20 +29,15 @@ add wave -divider "Internal"
 add wave -label syndrome_done /RS_decoder_tb/decoder/syndrome_done
 add wave -label bm_done /RS_decoder_tb/decoder/bm_done
 add wave -label cf_done /RS_decoder_tb/decoder/cf_done
-add wave -label syndrome_output /RS_decoder_tb/decoder/syndrome_output
-add wave -label bm_output /RS_decoder_tb/decoder/bm_output
+add wave -label syndrome_output /RS_decoder_tb/decoder/syndrome_reg
+add wave -label bm_output /RS_decoder_tb/decoder/bm_reg
+add wave -label cf_magnitudes /RS_decoder_tb/decoder/cf_mags_reg
+add wave -label cf_indices /RS_decoder_tb/decoder/cf_inds_reg
 add wave -label received /RS_decoder_tb/decoder/received
 add wave -label received_index /RS_decoder_tb/decoder/received_index
 add wave -label output_index /RS_decoder_tb/decoder/output_index
 
-add wave -label syndrome_reg /RS_decoder_tb/decoder/syndrome_reg
-add wave -label bm_reg /RS_decoder_tb/decoder/bm_reg
-
 add wave -label cf_internal /RS_decoder_tb/cf_internal
-
-add wave -label cf_mags /RS_decoder_tb/decoder/cf_magnitudes
-add wave -label cf_inds /RS_decoder_tb/decoder/cf_indices
-add wave -label errors_counter /RS_decoder_tb/decoder/errors_counter
 
 #add wave -divider "Syndrome"
 #add wave -label "clock" /RS_decoder_tb/decoder/syndrome_module/clock
@@ -55,7 +51,10 @@ add wave -label errors_counter /RS_decoder_tb/decoder/errors_counter
 #add wave -label "syndromes" /RS_decoder_tb/decoder/syndrome_module/syndromes
 #add wave -label "multiplications" /RS_decoder_tb/decoder/syndrome_module/multiplications
 
+add wave -label cf_mags /RS_decoder_tb/decoder/cf_module/errors_magnitudes
+add wave -label cf_inds /RS_decoder_tb/decoder/cf_module/errors_indices
+
 run 70000 ns
-wave zoom full
+#wave zoom full
 
 #quit -f

@@ -30,12 +30,20 @@ architecture Chien_Forney of Chien_Forney is
       multiplied : out key_equation);
   end component;
 
-  type states is (idle, prepare_omega, calculate_omega, set_alpha, prepare_key_equation, solve_key_equation, analyze_key_evaluated,
-                  evaluate_is_root, prepare_error_evaluator, calculate_error_evaluator, sum_independent_term, prepare_inversion,
-                  square_alphas, evaluate_error_magnitude, update_estimated_codeword, set_done);
+  component polynomial_evaluator
+    port (
+      x          : in  field_element;
+      polynomial : in  key_equation;
+      y          : out field_element);
+  end component;
+  
+  type states is (idle, prepare_omega, calculate_omega, set_alpha, solve_key_equation, analyze_key_evaluated, evaluate_is_root,
+                  prepare_error_evaluator, calculate_error_evaluator, sum_independent_term, prepare_inversion, square_alphas,
+                  evaluate_error_magnitude, update_estimated_codeword, set_done);
   signal current_state, next_state : states;
 
   signal alpha                   : field_element;
+  signal element                 : field_element;
   signal key_evaluated           : field_element;
   signal mult1_a                 : field_element;
   signal mult1_b                 : field_element;
@@ -44,6 +52,7 @@ architecture Chien_Forney of Chien_Forney is
   signal mult1_out               : field_element;
   signal mult2_out               : field_element;
   signal omega_evaluated         : field_element;
+  signal poly_solved             : field_element;
   signal sigma_derived_evaluated : field_element;
   signal syndrome_element        : field_element;
 
@@ -55,6 +64,7 @@ architecture Chien_Forney of Chien_Forney is
 
   signal omega_step    : key_equation;
   signal sigma_derived : key_equation;
+  signal poly          : key_equation;
 
   signal omega : omega_array;
 
@@ -80,6 +90,12 @@ begin
       v => mult2_b,
       w => mult2_out);
 
+  poly_solver : polynomial_evaluator
+    port map (
+      x          => element,
+      polynomial => poly,
+      y          => poly_solved);
+
   process(clock)
   begin
     if clock'event and clock = '1' then
@@ -91,7 +107,7 @@ begin
     end if;
   end process;
 
-  process(current_state, enable, index, is_last_element, is_root, codeword_index, key_counter, inverter_counter)
+  process(current_state, enable, index, is_last_element, is_root, codeword_index, inverter_counter)
   begin
     case current_state is
       when idle =>
@@ -112,17 +128,10 @@ begin
         end if;
         
       when set_alpha =>
-        next_state <= prepare_key_equation;
-
-      when prepare_key_equation =>
         next_state <= solve_key_equation;
         
       when solve_key_equation =>
-        if key_counter = 0 then
-          next_state <= analyze_key_evaluated;
-        else
-          next_state <= prepare_key_equation;
-        end if;
+        next_state <= analyze_key_evaluated;
 
       when analyze_key_evaluated =>
         next_state <= evaluate_is_root;
@@ -246,23 +255,10 @@ begin
           alpha(2) <= alpha(1) xor alpha(7);
           alpha(1) <= alpha(0);
           alpha(0) <= alpha(7);
-
-          omega_evaluated <= (others => '0');
-          index           <= T2 - 1;
-          key_counter     <= T;
-          key_evaluated   <= (others => '0');
-          
-        when prepare_key_equation =>
-          mult1_a     <= alpha;
-          mult1_b     <= error_locator(key_counter);
-          key_counter <= key_counter - 1;
           
         when solve_key_equation =>
-          if key_counter = 0 then
-            key_evaluated <= key_evaluated xor mult1_out xor error_locator(0);
-          else
-            key_evaluated <= key_evaluated xor mult1_out;
-          end if;
+          element <= alpha;
+          poly    <= error_locator;
 
         when analyze_key_evaluated =>
           if alpha = last_element then
@@ -271,7 +267,7 @@ begin
             is_last_element <= '0';
           end if;
 
-          if key_evaluated = all_zeros then
+          if poly_solved = all_zeros then
             is_root <= '1';
           else
             is_root <= '0';
@@ -279,28 +275,25 @@ begin
           
         when evaluate_is_root =>
           -- the other process will set the next state based on the 'is_root' variable
+          element <= alpha;
+          poly    <= sigma_derived;
+
+          omega_evaluated <= (others => '0');
+          index           <= T2 - 1;
 
         when prepare_error_evaluator =>
+          sigma_derived_evaluated <= poly_solved;
+
           mult1_a <= omega(index);
           mult1_b <= alpha;
-
-          if index <= T then
-            mult2_a <= sigma_derived(index);
-            mult2_b <= alpha;
-          end if;
 
           index <= index - 1;
 
         when calculate_error_evaluator =>
           omega_evaluated <= omega_evaluated xor mult1_out;  -- apply Horner's rule to all elements multiplied by x
 
-          if index < T then
-            sigma_derived_evaluated <= sigma_derived_evaluated xor mult2_out;
-          end if;
-
         when sum_independent_term =>
-          omega_evaluated         <= omega_evaluated xor omega(0);  -- sum the independent element in the end
-          sigma_derived_evaluated <= sigma_derived_evaluated xor sigma_derived(0);
+          omega_evaluated <= omega_evaluated xor mult1_out xor omega(0);
 
           inverter_counter <= 0;
           mult2_a          <= (0 => '1', others => '0');

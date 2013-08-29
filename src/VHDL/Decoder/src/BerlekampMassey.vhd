@@ -32,7 +32,7 @@ architecture BerlekampMassey of BerlekampMassey is
       multiplied : out key_equation);
   end component;
 
-  type   states is (idle, prepare_discrepancy, calculate_discrepancy, set_lambda, update_signals, set_done);
+  type   states is (idle, prepare_discrepancy, calculate_discrepancy, set_lambda, prepare_polynomials, update_signals, set_done);
   signal current_state, next_state : states;
 
   signal discrepancy         : field_element;
@@ -111,6 +111,9 @@ begin
         end if;
         
       when set_lambda =>
+        next_state <= prepare_polynomials;
+        
+      when prepare_polynomials =>
         next_state <= update_signals;
         
       when update_signals =>
@@ -180,9 +183,11 @@ begin
           end if;
 
           temp_sigma <= sigma;
+          sigma      <= (others => (others => '0'));
           
+        when prepare_polynomials =>
           sigma_A <= theta;
-          sigma_B <= sigma;
+          sigma_B <= temp_sigma;
 
           sigmaX_A <= discrepancy;
           sigmaX_B <= B;
@@ -199,7 +204,16 @@ begin
           sigma(8) <= sigma_product(8) xor sigmaX_product(7);
 
           if lambda = '1' then
-            B     <= temp_sigma;
+            B(0) <= temp_sigma(0);
+            B(1) <= temp_sigma(1);
+            B(2) <= temp_sigma(2);
+            B(3) <= temp_sigma(3);
+            B(4) <= temp_sigma(4);
+            B(5) <= temp_sigma(5);
+            B(6) <= temp_sigma(6);
+            B(7) <= temp_sigma(7);
+            B(8) <= temp_sigma(8);
+
             theta <= discrepancy;
             L     <= index - L + 1;
             

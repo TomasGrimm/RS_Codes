@@ -4,8 +4,8 @@ vlib work
 
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
-vcom ../src/LFSR.vhd
-vcom ../src/RS_coder.vhd 
+vcom -check_synthesis ../src/LFSR.vhd
+vcom -check_synthesis ../src/RS_coder.vhd 
 vcom RS_coder_tb.vhd
 
 vsim -t ns work.RS_coder_tb
@@ -35,9 +35,8 @@ add wave -label "multiplicand_poly" /RS_coder_tb/coder/encode/multiplicand_poly
 add wave -label "intermediary_poly" /RS_coder_tb/coder/encode/intermediary_poly
 add wave -label delay /RS_coder_tb/coder/delay
 add wave -label par_ready /RS_coder_tb/coder/par_ready
-add wave -label par_shifted /RS_coder_tb/coder/par_shifted
 
 run 2700 ns
-#wave zoom full
+wave zoom full
 
-quit -f
+#quit -f

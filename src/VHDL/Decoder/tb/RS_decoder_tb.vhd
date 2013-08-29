@@ -27,8 +27,8 @@ architecture RS_decoder_tb of RS_decoder_tb is
 
   signal cf_internal : std_logic;
 
-  file fd_in : text open read_mode is "../../Tests/received.txt";
-  file fd_out : text open write_mode is "../../Tests/estimated_vhdl.txt";
+  file fd_in : text open read_mode is "./comparison/received.txt";
+  file fd_out : text open write_mode is "./comparison/estimated_vhdl.txt";
   
 begin
   decoder : RS_decoder
