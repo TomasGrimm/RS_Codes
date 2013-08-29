@@ -10,26 +10,25 @@ package ReedSolomon is
 
   subtype field_element is std_logic_vector(SYMBOL_LENGTH - 1 downto 0);
 
-  type generator_polynomial is array (0 to T2 - 1)       of field_element;
-  type codeword_array       is array (0 to N_LENGTH - 1) of field_element;  -- array for codewords
-  type syndrome_vector      is array (0 to T2 - 1)       of field_element;  -- the type for the output vector from the syndrome module
-  type key_equation         is array (0 to T)            of field_element;  -- equation that locates the errors' positions
-  type omega_array          is array (0 to T2 + T - 1)   of field_element;  -- omega = syndrome * key_equation
-  type errors_values        is array (0 to T - 1)        of field_element;
-  type errors_locations     is array (0 to T - 1)        of integer;
-
+  constant alpha_zero   : field_element;
   constant last_element : field_element;
   constant all_zeros    : field_element;
-  constant alpha_zero   : field_element;
+  
+  type codeword_array       is array (0 to N_LENGTH - 1) of field_element;  -- array for codewords
+  type key_equation         is array (0 to T)            of field_element;  -- equation that locates the errors' positions
+  type omega_array          is array (0 to T2 - 1)       of field_element;  -- omega = (syndrome * key_equation) mod x^2t
 
+  type generator_polynomial is array (0 to T2 - 1)       of field_element;
   constant gen_poly : generator_polynomial;  -- generator polynomial
+
+  type syndrome_vector      is array (0 to T2 - 1)       of field_element;  -- the type for the output vector from the syndrome module
   constant alphas   : syndrome_vector;       -- generator polynomial roots
 end package ReedSolomon;
 
 package body ReedSolomon is
-  constant last_element : field_element := "10001110";
+  constant alpha_zero   : field_element := "00000001";  -- a^0
+  constant last_element : field_element := "10001110";  -- a^254
   constant all_zeros    : field_element := "00000000";
-  constant alpha_zero   : field_element := "00000001";
   
   constant alphas : syndrome_vector := ("00000001",   -- a^0
                                         "00000010",   -- a^1

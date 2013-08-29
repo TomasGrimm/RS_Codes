@@ -8,14 +8,15 @@ vcom ../../Auxiliary/src/scalar_multiplier.vhd
 vcom ../src/BerlekampMassey.vhd 
 vcom BerlekampMassey_tb.vhd
 
-vsim work.BerlekampMassey_tb
+vsim -t ns work.BerlekampMassey_tb
 
 add wave -label clk /BerlekampMassey_tb/clk
 add wave -label rst /BerlekampMassey_tb/rst
 add wave -label ena /BerlekampMassey_tb/ena
 add wave -label syn /BerlekampMassey_tb/syn
 add wave -label dne /BerlekampMassey_tb/dne
-add wave -label equ /BerlekampMassey_tb/equ
+add wave -label elp /BerlekampMassey_tb/elp
+add wave -label eep /BerlekampMassey_tb/eep
 
 add wave -divider
 
@@ -57,7 +58,7 @@ add wave -label CS /BerlekampMassey_tb/BM/current_state
 
 #add wave -label double_L /BerlekampMassey_tb/BM/double_L
 
-run 2000 ns
-#wave zoom full
+run 1500 ns
+wave zoom full
 
 #quit -f

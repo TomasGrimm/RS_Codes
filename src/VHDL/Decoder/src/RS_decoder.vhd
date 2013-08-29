@@ -43,44 +43,47 @@ architecture RS_decoder of RS_decoder is
       enable   : in std_logic;
       syndrome : in syndrome_vector;
 
-      done     : out std_logic;
-      equation : out key_equation);
+      done            : out std_logic;
+      error_locator   : out key_equation;
+      error_evaluator : out omega_array);
   end component;
 
   component Chien_Forney is
     port (
-      clock         : in std_logic;
-      reset         : in std_logic;
-      enable        : in std_logic;
-      syndrome      : in syndrome_vector;
-      error_locator : in key_equation;
+      clock           : in std_logic;   -- clock signal
+      reset           : in std_logic;   -- reset signal
+      enable          : in std_logic;  -- enables this unit when the key equation is ready
+      error_locator   : in key_equation;
+      error_evaluator : in omega_array;
 
-      done              : out std_logic;
-      errors_magnitudes : out errors_values;
-      errors_indices    : out errors_locations);
+      done            : out std_logic;  -- signals when the search is done
+      is_root         : out std_logic;
+      processing      : out std_logic;
+      error_index     : out integer;
+      error_magnitude : out field_element);
   end component;
 
   signal syndrome_done        : std_logic;
   signal bm_done              : std_logic;
   signal cf_done              : std_logic;
+  signal cf_processing        : std_logic;
+  signal cf_root              : std_logic;
   signal decoding_done        : std_logic;
-  signal correct_received     : std_logic;
   signal received_is_codeword : std_logic;
 
   signal syndrome_output : syndrome_vector;
   signal syndrome_reg    : syndrome_vector;
 
-  signal bm_output : key_equation;
-  signal bm_reg    : key_equation;
+  signal bm_locator_output   : key_equation;
+  signal bm_locator_reg      : key_equation;
+  signal bm_evaluator_output : omega_array;
+  signal bm_evaluator_reg    : omega_array;
 
-  signal cf_magnitudes : errors_values;
-  signal cf_mags_reg   : errors_values;
-  signal cf_indices    : errors_locations;
-  signal cf_inds_reg   : errors_locations;
+  signal cf_magnitude : field_element;
 
   signal received : codeword_array;
 
-  signal errors_counter : integer;
+  signal cf_index       : integer;
   signal output_index   : integer;
   signal received_index : integer;
   
@@ -97,41 +100,42 @@ begin
 
   bm_module : BerlekampMassey
     port map (
-      clock    => clock,
-      reset    => reset,
-      enable   => syndrome_done,
-      syndrome => syndrome_reg,
-      done     => bm_done,
-      equation => bm_output);
+      clock           => clock,
+      reset           => reset,
+      enable          => syndrome_done,
+      syndrome        => syndrome_reg,
+      done            => bm_done,
+      error_locator   => bm_locator_output,
+      error_evaluator => bm_evaluator_output);
 
   cf_module : Chien_Forney
     port map (
-      clock             => clock,
-      reset             => reset,
-      enable            => bm_done,
-      syndrome          => syndrome_reg,
-      error_locator     => bm_reg,
-      done              => cf_done,
-      errors_magnitudes => cf_magnitudes,
-      errors_indices    => cf_indices);
+      clock           => clock,
+      reset           => reset,
+      enable          => bm_done,
+      error_locator   => bm_locator_reg,
+      error_evaluator => bm_evaluator_reg,
+      done            => cf_done,
+      is_root         => cf_root,
+      processing      => cf_processing,
+      error_index     => cf_index,
+      error_magnitude => cf_magnitude);
 
   process(clock)
   begin
     if clock'event and clock = '1' then
       if reset = '1' or decoding_done = '1' then
         syndrome_reg     <= (others => (others => '0'));
-        bm_reg           <= (others => (others => '0'));
-        cf_mags_reg      <= (others => (others => '0'));
-        cf_inds_reg      <= (others => 0);
-        correct_received <= '0';
+        bm_locator_reg   <= (others => (others => '0'));
+        bm_evaluator_reg <= (others => (others => '0'));
+        
       elsif syndrome_done = '1' then
         syndrome_reg <= syndrome_output;
+        
       elsif bm_done = '1' then
-        bm_reg <= bm_output;
-      elsif cf_done = '1' then
-        cf_mags_reg      <= cf_magnitudes;
-        cf_inds_reg      <= cf_indices;
-        correct_received <= '1';
+        bm_locator_reg   <= bm_locator_output;
+        bm_evaluator_reg <= bm_evaluator_output;
+        
       end if;
     end if;
   end process;
@@ -154,42 +158,25 @@ begin
     if clock'event and clock = '1' then
       if reset = '1' then
         output_index   <= N_LENGTH - 1;
-        data_out       <= (others => '0');
         decoding_done  <= '0';
-        done           <= '0';
-        errors_counter <= 0;
       else
         if received_is_codeword = '1' then
           if output_index >= 0 then
-            data_out     <= received(output_index);
             output_index <= output_index - 1;
           else
             decoding_done <= '1';
-            done          <= '1';
           end if;
-        end if;
-
-        if correct_received = '1' then
-          if output_index = cf_inds_reg(errors_counter) then
-            data_out       <= cf_mags_reg(errors_counter) xor received(output_index);
-            errors_counter <= errors_counter + 1;
-          else
-            data_out <= received(output_index);
-          end if;
-
-          if output_index > 0 then
-            output_index <= output_index - 1;
-          else
-            output_index <= 0;
-          end if;
-        end if;
-
-        if output_index = 0 then
-          decoding_done <= '1';
-          done          <= '1';
         end if;
       end if;
     end if;
   end process;
+
+  data_out <= received(output_index) when received_is_codeword = '1' else
+              received(cf_index) xor cf_magnitude when cf_root = '1' and cf_processing = '1' else
+              received(cf_index) when cf_processing = '1' else
+              (others => '0');
+
+  done <= '1' when decoding_done = '1' or cf_done = '1' else
+          '0';
   
 end architecture;

@@ -10,38 +10,37 @@ end entity;
 architecture Chien_Forney_tb of Chien_Forney_tb is
   component Chien_Forney is
     port (
-      clock         : in std_logic;
-      reset         : in std_logic;
-      enable        : in std_logic;
-      syndrome      : in syndrome_vector;
-      error_locator : in key_equation;
+      clock           : in std_logic;
+      reset           : in std_logic;
+      enable          : in std_logic;
+      error_locator   : in key_equation;
+      error_evaluator : in omega_array;
 
-      done              : out std_logic;
-      errors_magnitudes : out errors_values;
-      errors_indices    : out errors_locations);
+      done            : out std_logic;
+      is_root         : out std_logic;
+      error_magnitude : out field_element);
   end component;
 
-  signal clk, rst, ena, dne : std_logic;
-  signal syn                : syndrome_vector;
-  signal erl                : key_equation;
-  signal err_mag            : errors_values;
-  signal err_ind            : errors_locations;
+  signal clk, rst, ena, dne, root : std_logic;
+  signal erl                      : key_equation;
+  signal eep                      : omega_array;
+  signal err_mag                  : field_element;
 
-  file fd_syn_in : text open read_mode is "./comparison/syndrome_vhdl.txt";
-  file fd_bm_in  : text open read_mode is "./comparison/bm_vhdl.txt";
-  file fd_out    : text open write_mode is "./comparison/chien_vhdl.txt";
+  file fd_bm_loc_in : text open read_mode is "./comparison/bm_locator.txt";
+  file fd_bm_eva_in : text open read_mode is "./comparison/bm_evaluator.txt";
+  file fd_out       : text open write_mode is "./comparison/chien_vhdl.txt";
   
 begin
   CF : Chien_Forney
     port map (
-      clock             => clk,
-      reset             => rst,
-      enable            => ena,
-      syndrome          => syn,
-      error_locator     => erl,
-      done              => dne,
-      errors_magnitudes => err_mag,
-      errors_indices    => err_ind);
+      clock           => clk,
+      reset           => rst,
+      enable          => ena,
+      error_locator   => erl,
+      error_evaluator => eep,
+      done            => dne,
+      is_root         => root,
+      error_magnitude => err_mag);
 
   process
   begin
@@ -60,116 +59,116 @@ begin
   end process;
 
   process
-    variable line1, line2 : line;
-    variable value        : field_element;
+    variable line1, line2, line3 : line;
+    variable value               : field_element;
   begin
     ena <= '0';
-    syn <= (others => (others => '0'));
     erl <= (others => (others => '0'));
+    eep <= (others => (others => '0'));
     wait for 20 ns;
 
     ena    <= '1';
-    -- syndrome
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(0) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(1) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(2) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(3) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(4) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(5) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(6) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(7) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(8) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(9) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(10) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(11) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(12) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(13) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(14) <= value;
-
-    readline (fd_syn_in, line1);
-    read (line1, value);
-    syn(15) <= value;
-
     -- error locator polynomial (Berlekamp output)
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(0) <= value;
 
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(1) <= value;
 
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(2) <= value;
 
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(3) <= value;
 
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(4) <= value;
 
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(5) <= value;
 
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(6) <= value;
 
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(7) <= value;
 
-    readline (fd_bm_in, line2);
+    readline (fd_bm_loc_in, line2);
     read (line2, value);
     erl(8) <= value;
+
+    -- error evaluator polynomail (Berlekamp output
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(0) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(1) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(2) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(3) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(4) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(5) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(6) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(7) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(8) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(9) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(10) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(11) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(12) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(13) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(14) <= value;
+
+    readline (fd_bm_eva_in, line3);
+    read (line3, value);
+    eep(15) <= value;
 
     wait for 10 ns;
     ena <= '0';

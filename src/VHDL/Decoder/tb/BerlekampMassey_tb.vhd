@@ -17,14 +17,16 @@ architecture BerlekampMassey_tb of BerlekampMassey_tb is
       syndrome : in syndrome_vector;
 
       done     : out std_logic;
-      equation : out key_equation);
+      error_locator : out key_equation;
+      error_evaluator : out omega_array);
   end component;
 
   signal clk, rst, ena, dne : std_logic;
   signal syn                : syndrome_vector;
-  signal equ                : key_equation;
+  signal elp                : key_equation;
+  signal eep : omega_array;
 
-  file fd_in : text open read_mode is "./comparison/syndrome_golden.txt";
+  file fd_in : text open read_mode is "./comparison/syndrome_vhdl.txt";
   file fd_out : text open write_mode is "./comparison/bm_vhdl.txt";
 begin
   BM : BerlekampMassey
@@ -34,7 +36,8 @@ begin
       enable   => ena,
       syndrome => syn,
       done     => dne,
-      equation => equ);
+      error_locator => elp,
+      error_evaluator => eep);
 
   process
   begin
@@ -127,35 +130,35 @@ begin
     wait;
   end process;
 
-  process
-    variable line_num : line;
-  begin
-    wait until clk'event and clk = '1' and ena = '0' and rst = '0' and dne = '1';
-    write(line_num, equ(0));
-    writeline(fd_out, line_num);
+  --process
+  --  variable line_num : line;
+  --begin
+  --  wait until clk'event and clk = '1' and ena = '0' and rst = '0' and dne = '1';
+  --  write(line_num, equ(0));
+  --  writeline(fd_out, line_num);
 
-    write(line_num, equ(1));
-    writeline(fd_out, line_num);
+  --  write(line_num, equ(1));
+  --  writeline(fd_out, line_num);
 
-    write(line_num, equ(2));
-    writeline(fd_out, line_num);
+  --  write(line_num, equ(2));
+  --  writeline(fd_out, line_num);
 
-    write(line_num, equ(3));
-    writeline(fd_out, line_num);
+  --  write(line_num, equ(3));
+  --  writeline(fd_out, line_num);
 
-    write(line_num, equ(4));
-    writeline(fd_out, line_num);
+  --  write(line_num, equ(4));
+  --  writeline(fd_out, line_num);
 
-    write(line_num, equ(5));
-    writeline(fd_out, line_num);
+  --  write(line_num, equ(5));
+  --  writeline(fd_out, line_num);
 
-    write(line_num, equ(6));
-    writeline(fd_out, line_num);
+  --  write(line_num, equ(6));
+  --  writeline(fd_out, line_num);
 
-    write(line_num, equ(7));
-    writeline(fd_out, line_num);
+  --  write(line_num, equ(7));
+  --  writeline(fd_out, line_num);
 
-    write(line_num, equ(8));
-    writeline(fd_out, line_num);
-  end process;
+  --  write(line_num, equ(8));
+  --  writeline(fd_out, line_num);
+  --end process;
 end architecture;

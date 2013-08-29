@@ -4,98 +4,163 @@ use work.ReedSolomon.all;
 
 entity Chien_Forney is
   port (
-    clock         : in std_logic;       -- clock signal
-    reset         : in std_logic;       -- reset signal
-    enable        : in std_logic;  -- enables this unit when the key equation is ready
-    syndrome      : in syndrome_vector;
-    error_locator : in key_equation;
+    clock           : in std_logic;     -- clock signal
+    reset           : in std_logic;     -- reset signal
+    enable          : in std_logic;  -- enables this unit when the key equation is ready
+    error_locator   : in key_equation;
+    error_evaluator : in omega_array;
 
-    done              : out std_logic;  -- signals when the search is done
-    errors_magnitudes : out errors_values;
-    errors_indices    : out errors_locations);
+    done            : out std_logic;    -- signals when the search is done
+    is_root         : out std_logic;
+    processing      : out std_logic;
+    error_index     : out integer;
+    error_magnitude : out field_element);
 end entity;
 
 architecture Chien_Forney of Chien_Forney is
-  component field_element_multiplier is
+  component field_element_multiplier
     port (
       u : in  field_element;
       v : in  field_element;
       w : out field_element);
   end component;
 
-  component scalar_multiplier is
-    port (
-      element    : in  field_element;
-      polynomial : in  key_equation;
-      multiplied : out key_equation);
-  end component;
-
-  component polynomial_evaluator
-    port (
-      x          : in  field_element;
-      polynomial : in  key_equation;
-      y          : out field_element);
-  end component;
-  
-  type states is (idle, prepare_omega, calculate_omega, set_alpha, solve_key_equation, analyze_key_evaluated, evaluate_is_root,
-                  prepare_error_evaluator, calculate_error_evaluator, sum_independent_term, prepare_inversion, square_alphas,
-                  evaluate_error_magnitude, update_estimated_codeword, set_done);
+  type   states is (idle, chienize, set_done);
   signal current_state, next_state : states;
 
-  signal alpha                   : field_element;
-  signal element                 : field_element;
-  signal key_evaluated           : field_element;
-  signal mult1_a                 : field_element;
-  signal mult1_b                 : field_element;
-  signal mult2_a                 : field_element;
-  signal mult2_b                 : field_element;
-  signal mult1_out               : field_element;
-  signal mult2_out               : field_element;
-  signal omega_evaluated         : field_element;
-  signal poly_solved             : field_element;
-  signal sigma_derived_evaluated : field_element;
-  signal syndrome_element        : field_element;
+  signal sum_and_compare : std_logic;
 
-  signal index            : integer;
-  signal codeword_index   : integer;
-  signal errors_counter   : integer;
-  signal inverter_counter : integer;
-  signal key_counter      : integer;
+  signal alpha          : field_element;
+  signal magnitude      : field_element;
+  signal omega_scaled   : field_element;
+  signal omega_sum      : field_element;
+  signal sigma_sum      : field_element;
+  signal sigma_derived  : field_element;
+  signal sigma_inverted : field_element;
+  signal step_1         : field_element;
+  signal step_2         : field_element;
+  signal step_2_partial : field_element;
+  signal step_3         : field_element;
+  signal step_3_partial : field_element;
+  signal step_4         : field_element;
+  signal step_4_partial : field_element;
+  signal step_5         : field_element;
+  signal step_5_partial : field_element;
+  signal step_6         : field_element;
+  signal step_6_partial : field_element;
+  signal step_7_partial : field_element;
 
-  signal omega_step    : key_equation;
-  signal sigma_derived : key_equation;
-  signal poly          : key_equation;
+  signal error_locator_out     : key_equation;
+  signal partial_error_locator : key_equation;
+  signal sigma_input           : key_equation;
 
-  signal omega : omega_array;
+  signal error_evaluator_out     : omega_array;
+  signal partial_error_evaluator : omega_array;
 
-  signal is_last_element : std_logic;
-  signal is_root         : std_logic;
-  
+  signal iterations_counter : integer;
+
+  constant sigma_alpha_zero : key_equation := (others => "00000001");
+  constant sigma_alphas : key_equation := ("00000001",
+                                           "00000010",
+                                           "00000100",
+                                           "00001000",
+                                           "00010000",
+                                           "00100000",
+                                           "01000000",
+                                           "10000000",
+                                           "00011101");
+
+  constant omega_alphas : omega_array := ("00000001",
+                                          "00000010",
+                                          "00000100",
+                                          "00001000",
+                                          "00010000",
+                                          "00100000",
+                                          "01000000",
+                                          "10000000",
+                                          "00011101",
+                                          "00111010",
+                                          "01110100",
+                                          "11101000",
+                                          "11001101",
+                                          "10000111",
+                                          "00010011",
+                                          "00100110");
+
 begin
-  omega_multiplier : scalar_multiplier
-    port map (
-      element    => syndrome_element,
-      polynomial => error_locator,
-      multiplied => omega_step);
+  processing  <= sum_and_compare;
+  error_index <= iterations_counter;
 
-  multiplicator_1 : field_element_multiplier
-    port map (
-      u => mult1_a,
-      v => mult1_b,
-      w => mult1_out);
+  sigma_input <= (others => (others => '0')) when enable = '1' else
+                 sigma_alpha_zero when iterations_counter = -1 or iterations_counter = 0 else
+                 sigma_alphas;
+  
+  error_locator_terms : for I in 0 to T generate
+    term : field_element_multiplier port map (sigma_input(I), partial_error_locator(I), error_locator_out(I));
+  end generate;
 
-  multiplicator_2 : field_element_multiplier
-    port map (
-      u => mult2_a,
-      v => mult2_b,
-      w => mult2_out);
+  error_evaluator_terms : for J in 0 to (T2 - 1) generate
+    term : field_element_multiplier port map (omega_alphas(J), partial_error_evaluator(J), error_evaluator_out(J));
+  end generate;
 
-  poly_solver : polynomial_evaluator
-    port map (
-      x          => element,
-      polynomial => poly,
-      y          => poly_solved);
+  sigma_sum <= (others => '0') when sum_and_compare = '0' else
+               error_locator_out(0) xor
+               error_locator_out(1) xor
+               error_locator_out(2) xor
+               error_locator_out(3) xor
+               error_locator_out(4) xor
+               error_locator_out(5) xor
+               error_locator_out(6) xor
+               error_locator_out(7) xor
+               error_locator_out(8);
 
+  is_root <= '1' when sigma_sum = all_zeros and sum_and_compare = '1' else
+             '0';
+  
+  sigma_derived <= (others => '0') when sum_and_compare = '0' else
+                   error_locator_out(1) xor
+                   error_locator_out(3) xor
+                   error_locator_out(5) xor
+                   error_locator_out(7);
+
+  omega_sum <= (others => '0') when sum_and_compare = '0' else
+               error_evaluator_out(0) xor
+               error_evaluator_out(1) xor
+               error_evaluator_out(2) xor
+               error_evaluator_out(3) xor
+               error_evaluator_out(4) xor
+               error_evaluator_out(5) xor
+               error_evaluator_out(6) xor
+               error_evaluator_out(7) xor
+               error_evaluator_out(8) xor
+               error_evaluator_out(9) xor
+               error_evaluator_out(10) xor
+               error_evaluator_out(11) xor
+               error_evaluator_out(12) xor
+               error_evaluator_out(13) xor
+               error_evaluator_out(14) xor
+               error_evaluator_out(15);
+
+  sigma_derived_inversion_step_1         : field_element_multiplier port map (sigma_derived, sigma_derived, step_1);
+  sigma_derived_inversion_step_2_partial : field_element_multiplier port map (step_1, sigma_derived, step_2_partial);
+  sigma_derived_inversion_step_2         : field_element_multiplier port map (step_2_partial, step_2_partial, step_2);
+  sigma_derived_inversion_step_3_partial : field_element_multiplier port map (step_2, sigma_derived, step_3_partial);
+  sigma_derived_inversion_step_3         : field_element_multiplier port map (step_3_partial, step_3_partial, step_3);
+  sigma_derived_inversion_step_4_partial : field_element_multiplier port map (step_3, sigma_derived, step_4_partial);
+  sigma_derived_inversion_step_4         : field_element_multiplier port map (step_4_partial, step_4_partial, step_4);
+  sigma_derived_inversion_step_5_partial : field_element_multiplier port map (step_4, sigma_derived, step_5_partial);
+  sigma_derived_inversion_step_5         : field_element_multiplier port map (step_5_partial, step_5_partial, step_5);
+  sigma_derived_inversion_step_6_partial : field_element_multiplier port map (step_5, sigma_derived, step_6_partial);
+  sigma_derived_inversion_step_6         : field_element_multiplier port map (step_6_partial, step_6_partial, step_6);
+  sigma_derived_inversion_step_7_partial : field_element_multiplier port map (step_6, sigma_derived, step_7_partial);
+  sigma_derived_inversion_step_7         : field_element_multiplier port map (step_7_partial, step_7_partial, sigma_inverted);
+
+  omega_scaling         : field_element_multiplier port map (omega_sum, alpha, omega_scaled);
+  magnitude_calculation : field_element_multiplier port map (omega_scaled, sigma_inverted, magnitude);
+
+  error_magnitude <= (others => '0') when reset = '1' or sum_and_compare = '0' else
+                     magnitude;
+  
   process(clock)
   begin
     if clock'event and clock = '1' then
@@ -107,83 +172,28 @@ begin
     end if;
   end process;
 
-  process(current_state, enable, index, is_last_element, is_root, codeword_index, inverter_counter)
+  process(current_state, enable, iterations_counter)
   begin
     case current_state is
       when idle =>
         if enable = '1' then
-          next_state <= prepare_omega;
+          next_state <= chienize;
         else
           next_state <= idle;
         end if;
-        
-      when prepare_omega =>
-        next_state <= calculate_omega;
-        
-      when calculate_omega =>
-        if index = (T2 - 1) then
-          next_state <= set_alpha;
-        else
-          next_state <= prepare_omega;
-        end if;
-        
-      when set_alpha =>
-        next_state <= solve_key_equation;
-        
-      when solve_key_equation =>
-        next_state <= analyze_key_evaluated;
 
-      when analyze_key_evaluated =>
-        next_state <= evaluate_is_root;
-        
-      when evaluate_is_root =>
-        if is_root = '1' then
-          next_state <= prepare_error_evaluator;
-        elsif is_last_element = '1' then
+      when chienize =>
+        if iterations_counter = 0 then
           next_state <= set_done;
         else
-          next_state <= update_estimated_codeword;
+          next_state <= chienize;
         end if;
 
-      when prepare_error_evaluator =>
-        next_state <= calculate_error_evaluator;
-
-      when calculate_error_evaluator =>
-        if index = 0 then
-          next_state <= sum_independent_term;
-        else
-          next_state <= prepare_error_evaluator;
-        end if;
-
-      when sum_independent_term =>
-        next_state <= prepare_inversion;
-
-      when prepare_inversion =>
-        next_state <= square_alphas;
-
-      when square_alphas =>
-        if inverter_counter = (SYMBOL_LENGTH - 1) then
-          next_state <= evaluate_error_magnitude;
-        else
-          next_state <= prepare_inversion;
-        end if;
-
-      when evaluate_error_magnitude =>
-        next_state <= update_estimated_codeword;
-
-      when update_estimated_codeword =>
-        if codeword_index = N_LENGTH - 1 then
-          next_state <= set_done;
-        else
-          next_state <= set_alpha;
-        end if;
-        
       when set_done =>
         next_state <= idle;
-
+        
       when others =>
         next_state <= idle;
-        
     end case;
   end process;
 
@@ -192,61 +202,25 @@ begin
     if clock'event and clock = '1' then
       case current_state is
         when idle =>
-          done              <= '0';
-          errors_magnitudes <= (others => (others => '0'));
-          errors_indices    <= (others => 0);
-
-          alpha            <= last_element;  -- initialize with a^(n-2) to return to a^0 on the first time to enter "set_alpha"
-          key_evaluated    <= (others => '0');
-          mult1_a          <= (others => '0');
-          mult1_b          <= (others => '0');
-          mult2_a          <= (others => '0');
-          mult2_b          <= (others => '0');
-          omega_evaluated  <= (others => '0');
-          syndrome_element <= (others => '0');
-
-          sigma_derived           <= (others => (others => '0'));
-          sigma_derived_evaluated <= (others => '0');
-
-          index            <= 0;
-          codeword_index   <= 0;
-          inverter_counter <= 0;
-          key_counter      <= 0;
-          errors_counter   <= 0;
-
-          omega <= (others => (others => '0'));
-
-          is_last_element <= '0';
-          is_root         <= '0';
+          done                    <= '0';
+          sum_and_compare         <= '0';
+          partial_error_locator   <= error_locator;
+          partial_error_evaluator <= error_evaluator;
+          iterations_counter      <= N_LENGTH - 1;
+          alpha                   <= last_element;
           
-        when prepare_omega =>
-          -- the derivative of a polynomial with coefficients 
-          -- from an extension field eliminate the terms 
-          -- multiplied by an even power of x
-          sigma_derived(0) <= error_locator(1);
-          sigma_derived(2) <= error_locator(3);
-          sigma_derived(4) <= error_locator(5);
-          sigma_derived(6) <= error_locator(7);
+        when chienize =>
+          partial_error_locator   <= error_locator_out;
+          partial_error_evaluator <= error_evaluator_out;
 
-          syndrome_element <= syndrome(index);
+          sum_and_compare <= '1';
+
+          if iterations_counter > 0 then
+            iterations_counter <= iterations_counter - 1;
+            else
+              iterations_counter <= 0;
+          end if;
           
-        when calculate_omega =>
-          omega(index)     <= omega(index) xor omega_step(0);
-          omega(index + 1) <= omega(index + 1) xor omega_step(1);
-          omega(index + 2) <= omega(index + 2) xor omega_step(2);
-          omega(index + 3) <= omega(index + 3) xor omega_step(3);
-          omega(index + 4) <= omega(index + 4) xor omega_step(4);
-          omega(index + 5) <= omega(index + 5) xor omega_step(5);
-          omega(index + 6) <= omega(index + 6) xor omega_step(6);
-          omega(index + 7) <= omega(index + 7) xor omega_step(7);
-          omega(index + 8) <= omega(index + 8) xor omega_step(8);
-
-          -- (syndrome * key_equation) mod x^2t
-          omega(T2 to (T2 + T - 1)) <= (others => (others => '0'));
-
-          index <= index + 1;
-          
-        when set_alpha =>
           alpha(7) <= alpha(6);
           alpha(6) <= alpha(5);
           alpha(5) <= alpha(4);
@@ -256,75 +230,10 @@ begin
           alpha(1) <= alpha(0);
           alpha(0) <= alpha(7);
           
-        when solve_key_equation =>
-          element <= alpha;
-          poly    <= error_locator;
-
-        when analyze_key_evaluated =>
-          if alpha = last_element then
-            is_last_element <= '1';
-          else
-            is_last_element <= '0';
-          end if;
-
-          if poly_solved = all_zeros then
-            is_root <= '1';
-          else
-            is_root <= '0';
-          end if;
-          
-        when evaluate_is_root =>
-          -- the other process will set the next state based on the 'is_root' variable
-          element <= alpha;
-          poly    <= sigma_derived;
-
-          omega_evaluated <= (others => '0');
-          index           <= T2 - 1;
-
-        when prepare_error_evaluator =>
-          sigma_derived_evaluated <= poly_solved;
-
-          mult1_a <= omega(index);
-          mult1_b <= alpha;
-
-          index <= index - 1;
-
-        when calculate_error_evaluator =>
-          omega_evaluated <= omega_evaluated xor mult1_out;  -- apply Horner's rule to all elements multiplied by x
-
-        when sum_independent_term =>
-          omega_evaluated <= omega_evaluated xor mult1_out xor omega(0);
-
-          inverter_counter <= 0;
-          mult2_a          <= (0 => '1', others => '0');
-          mult2_b          <= (0 => '1', others => '0');
-
-        when prepare_inversion =>
-          mult1_a <= mult2_out;
-          mult1_b <= sigma_derived_evaluated;
-
-          inverter_counter <= inverter_counter + 1;
-
-        when square_alphas =>
-          mult2_a <= mult1_out;
-          mult2_b <= mult1_out;
-
-        when evaluate_error_magnitude =>
-          mult1_a <= omega_evaluated;
-          mult1_b <= mult2_out;
-          
-        when update_estimated_codeword =>
-          if is_root = '1' then
-            errors_magnitudes(errors_counter) <= mult1_out;
-            errors_indices(errors_counter)    <= N_LENGTH - codeword_index;
-            errors_counter                    <= errors_counter + 1;
-          end if;
-
-          codeword_index <= codeword_index + 1;
-          
         when set_done =>
-          done <= '1';
-
+          done            <= '1';
+          sum_and_compare <= '0';
+          
         when others =>
           null;
       end case;

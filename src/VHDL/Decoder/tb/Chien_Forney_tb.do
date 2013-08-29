@@ -4,8 +4,8 @@ vlib work
 
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
-vcom ../../Auxiliary/src/scalar_multiplier.vhd
-vcom ../../Auxiliary/src/polynomial_evaluator.vhd
+#vcom ../../Auxiliary/src/scalar_multiplier.vhd
+#vcom ../../Auxiliary/src/polynomial_evaluator.vhd
 vcom ../src/Chien_Forney.vhd 
 vcom Chien_Forney_tb.vhd
 
@@ -16,43 +16,44 @@ add wave -divider "In/Out"
 add wave -label clock /Chien_Forney_tb/clk
 add wave -label reset /Chien_Forney_tb/rst
 add wave -label enable /Chien_Forney_tb/ena
-add wave -label syndrome /Chien_Forney_tb/syn
 add wave -label "error_locator" /Chien_Forney_tb/erl
+add wave -label "error_evaluator" /Chien_Forney_tb/eep
 add wave -label done /Chien_Forney_tb/dne
-add wave -label "errors_magnitudes" /Chien_Forney_tb/err_mag
-add wave -label "errors_indices" /Chien_Forney_tb/err_ind
-
-add wave -divider States
-add wave -label CS /Chien_Forney_tb/CF/current_state
-add wave -label NS /Chien_Forney_tb/CF/next_state
+add wave -label is_root /Chien_Forney_tb/root
+add wave -label "error_magnitude" /Chien_Forney_tb/err_mag
 
 add wave -divider
-add wave -label "omega" /Chien_Forney_tb/CF/omega
-add wave -label "syndrome_element" /Chien_Forney_tb/CF/syndrome_element
-add wave -label "omega_step" /Chien_Forney_tb/CF/omega_step
 
-add wave -label "mult1_a" /Chien_Forney_tb/CF/mult1_a
-add wave -label "mult1_b" /Chien_Forney_tb/CF/mult1_b
-add wave -label "mult1_out" /Chien_Forney_tb/CF/mult1_out
-add wave -label "mult2_a" /Chien_Forney_tb/CF/mult2_a
-add wave -label "mult2_b" /Chien_Forney_tb/CF/mult2_b
-add wave -label "mult2_out" /Chien_Forney_tb/CF/mult2_out
-
-add wave -label "is_root" /Chien_Forney_tb/CF/is_root
+add wave -label "error_locator_out" /Chien_Forney_tb/CF/error_locator_out
+add wave -label "error_evaluator_out" /Chien_Forney_tb/CF/error_evaluator_out
+add wave -label "sigma_input" /Chien_Forney_tb/CF/sigma_input
+add wave -label "iterations" /Chien_Forney_tb/CF/iterations_counter
 add wave -label "alpha" /Chien_Forney_tb/CF/alpha
-add wave -label "codeword_index" /Chien_Forney_tb/CF/codeword_index
-add wave -label "is_last_element" /Chien_Forney_tb/CF/is_last_element
+add wave -label "sigma_sum" /Chien_Forney_tb/CF/sigma_sum
 add wave -label "sigma_derived" /Chien_Forney_tb/CF/sigma_derived
-add wave -label "key_counter" /Chien_Forney_tb/CF/key_counter
-add wave -label "key_evaluated" /Chien_Forney_tb/CF/key_evaluated
+add wave -label "sigma_inverted" /Chien_Forney_tb/CF/sigma_inverted
+add wave -label "omega_sum" /Chien_Forney_tb/CF/omega_sum
+#add wave -label "omega_scaled" /Chien_Forney_tb/CF/omega_scaled
+add wave -label "sum_and_compare" /Chien_Forney_tb/CF/sum_and_compare
+add wave -label current_state /Chien_Forney_tb/CF/current_state
+add wave -label next_state /Chien_Forney_tb/CF/next_state
 
-add wave -label "omega_evaluated" /Chien_Forney_tb/CF/omega_evaluated
-add wave -label "sigma_derived_evaluated" /Chien_Forney_tb/CF/sigma_derived_evaluated
+#add wave -divider
 
-add wave -label "inverter_counter" /Chien_Forney_tb/CF/inverter_counter
-add wave -label "errors_counter" /Chien_Forney_tb/CF/errors_counter
+#add wave -label "step_1" /Chien_Forney_tb/CF/step_1
+#add wave -label "step_2" /Chien_Forney_tb/CF/step_2
+#add wave -label "step_2_partial" /Chien_Forney_tb/CF/step_2_partial
+#add wave -label "step_3" /Chien_Forney_tb/CF/step_3
+#add wave -label "step_3_partial" /Chien_Forney_tb/CF/step_3_partial
+#add wave -label "step_4" /Chien_Forney_tb/CF/step_4
+#add wave -label "step_4_partial" /Chien_Forney_tb/CF/step_4_partial
+#add wave -label "step_5" /Chien_Forney_tb/CF/step_5
+#add wave -label "step_5_partial" /Chien_Forney_tb/CF/step_5_partial
+#add wave -label "step_6" /Chien_Forney_tb/CF/step_6
+#add wave -label "step_6_partial" /Chien_Forney_tb/CF/step_6_partial
+#add wave -label "step_7_partial" /Chien_Forney_tb/CF/step_7_partial
 
-run 65000 ns
-#wave zoom full
+run 2700 ns
+wave zoom full
 
 #quit -f
