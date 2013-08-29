@@ -49,8 +49,6 @@ add wave -label "omega_index" /Chien_Forney_tb/CF/omega_index
 add wave -label "omega_evaluated" /Chien_Forney_tb/CF/omega_evaluated
 add wave -label "sigma_derived_evaluated" /Chien_Forney_tb/CF/sigma_derived_evaluated
 
-add wave -label "inverter_counter" /Chien_Forney_tb/CF/inverter_counter
-
 run 65000 ns
 #wave zoom full
 

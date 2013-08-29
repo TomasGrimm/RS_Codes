@@ -310,7 +310,7 @@ begin
 
         when prepare_inversion =>
           mult1_a <= mult2_out;
-          mult1_b <= sigma_derived_evaluated;
+          mult1_b <= alpha;
 
           inverter_counter <= inverter_counter + 1;
 
