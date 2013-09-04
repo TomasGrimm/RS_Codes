@@ -9,7 +9,6 @@ entity RS_coder is
     clock         : in  std_logic;       -- clock signal
     reset         : in  std_logic;       -- signal used to clear all registers and the ready signal
     message_start : in  std_logic;       -- indicates when a new message is ready to be encoded
-    message_end   : in  std_logic;       -- indicates the end of a message
     message       : in  field_element;   -- message to be encoded
     done          : out std_logic;       -- signals when the processing is done
     codeword      : out field_element);  -- codeword containing the message and the calculated parity bits
@@ -21,7 +20,6 @@ architecture RS_coder of RS_coder is
       clock          : in  std_logic;
       reset          : in  std_logic;
       message_start  : in  std_logic;
-      message_end    : in  std_logic;
       message        : in  field_element;
       codeword       : out field_element;
       parity_ready   : out std_logic;
@@ -39,7 +37,6 @@ begin  -- RS
       clock          => clock,
       reset          => reset,
       message_start  => message_start,
-      message_end    => message_end,
       message        => message,
       codeword       => parity_out,
       parity_ready   => par_ready,
