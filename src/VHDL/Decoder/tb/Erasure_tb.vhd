@@ -67,15 +67,13 @@ begin  -- Erasure_tb
   process
   begin
     str <= '0';
-
     wait until clk = '1' and rst = '0';
-
     wait for 20 ns;
+    
     str <= '1';
-
     wait for 10 ns;
+    
     str <= '0';
-
     wait;
   end process;
 

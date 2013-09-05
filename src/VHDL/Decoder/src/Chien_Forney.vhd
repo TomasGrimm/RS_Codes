@@ -154,12 +154,12 @@ begin
   end process;
 
   -----------------------------------------------------------------------------
-  -- Control of the index
+  -- Index control
   -----------------------------------------------------------------------------
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' then
+      if reset = '1' or enable_operation = '0' then
         counter <= to_unsigned(N_LENGTH - 1, SYMBOL_LENGTH);
       elsif enable_operation = '1' then
         if counter > 0 then

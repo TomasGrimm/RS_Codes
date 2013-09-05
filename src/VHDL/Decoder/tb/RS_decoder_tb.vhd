@@ -15,7 +15,7 @@ architecture RS_decoder_tb of RS_decoder_tb is
       clock       : in  std_logic;
       reset       : in  std_logic;
       start_block : in  std_logic;
-      end_block   : in  std_logic;
+      erase       : in  std_logic;
       data_in     : in  field_element;
       --error    : out std_logic;
       done        : out std_logic;
@@ -25,7 +25,7 @@ architecture RS_decoder_tb of RS_decoder_tb is
   signal clk      : std_logic;
   signal rst      : std_logic;
   signal srt_blk  : std_logic;
-  signal end_blk  : std_logic;
+  signal era      : std_logic;
   signal dne      : std_logic;
   signal din, dot : field_element;
 
@@ -41,7 +41,7 @@ begin
       clock       => clk,
       reset       => rst,
       start_block => srt_blk,
-      end_block   => end_blk,
+      erase       => era,
       data_in     => din,
       --error => ,
       done        => dne,
@@ -74,26 +74,41 @@ begin
     variable line_num : line;
     variable value    : field_element;
   begin
+    era     <= '0';
     din     <= (others => '0');
-    srt_blk <= '0';
-    end_blk <= '0';
-    wait for 20 ns;
 
-    srt_blk <= '1';
-    wait for 10 ns;
-    srt_blk <= '0';
-
+    wait until srt_blk = '1';
+    
     while not endfile(fd_in) loop
       readline (fd_in, line_num);
       read (line_num, value);
       din <= value;
+
+      era <= '0';
+
+      if din = "11110100" then
+        era <= '1';
+      elsif din = "00011000" then
+        era <= '1';
+      elsif din = "11010111" then
+        era <= '1';
+      elsif din = "10010011" then
+        era <= '1';
+      end if;
+
       wait until clk = '1';
     end loop;
 
-    end_blk <= '1';
-    wait for 10 ns;
-    end_blk <= '0';
+    wait;
+  end process;
 
+  process
+  begin
+    srt_blk <= '0';
+    wait for 20 ns;
+    srt_blk <= '1';
+    wait for 10 ns;
+    srt_blk <= '0';
     wait;
   end process;
 

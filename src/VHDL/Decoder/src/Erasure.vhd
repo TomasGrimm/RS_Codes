@@ -7,7 +7,7 @@ entity Erasure is
   port (
     clock          : in  std_logic;
     reset          : in  std_logic;
-    start_block    : in  std_logic;
+    enable         : in  std_logic;
     erase          : in  std_logic;
     done           : out std_logic;
     erasures       : out T2less1_array;
@@ -21,8 +21,6 @@ architecture Erasure of Erasure is
       v : in  field_element;
       w : out field_element);
   end component;
-
-  signal enable_operation : std_logic;
 
   signal counter          : unsigned(T downto 0);
   signal erasures_counter : unsigned(T downto 0);
@@ -40,23 +38,9 @@ begin
 
   erasures_helper(0) <= alpha_zero when reset = '1';
   addition : for J in 1 to T2 - 1 generate
-    erasures_helper(J) <= (others => '0') when reset = '1' or start_block = '1' else
-                          multipliers_output(J - 1) xor temp_erasures(J) when erase = '1';
+    erasures_helper(J) <= (others => '0') when reset = '1' or enable = '0' else
+                          multipliers_output(J - 1) xor temp_erasures(J) when erase = '1' and enable = '1';
   end generate addition;
-
-  -----------------------------------------------------------------------------
-  -- Enable the erasure polynomial generation
-  -----------------------------------------------------------------------------
-  process(clock)
-  begin
-    if clock'event and clock = '1' then
-      if reset = '1' or counter = N_LENGTH - 1 then
-        enable_operation <= '0';
-      elsif start_block = '1' then
-        enable_operation <= '1';
-      end if;
-    end if;
-  end process;
 
   -----------------------------------------------------------------------------
   -- Counter to control the polynomial generation
@@ -64,9 +48,9 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or enable_operation = '0' then
+      if reset = '1' or enable = '0' then
         counter <= (others => '0');
-      elsif enable_operation = '1' then
+      elsif enable = '1' then
         counter <= counter + 1;
       end if;
     end if;
@@ -78,9 +62,9 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or start_block = '1' then
+      if reset = '1' or enable = '0' then
         alpha <= last_element;
-      elsif enable_operation = '1' then
+      elsif enable = '1' then
         alpha(7) <= alpha(0);
         alpha(6) <= alpha(7);
         alpha(5) <= alpha(6);
@@ -99,9 +83,9 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or start_block = '1' then
+      if reset = '1' or enable = '0' then
         erasures_counter <= (others => '0');
-      elsif enable_operation = '1' then
+      elsif enable = '1' then
         if erase = '1' then
           erasures_counter <= erasures_counter + 1;
         else
@@ -117,10 +101,10 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or start_block = '1' then
+      if reset = '1' or enable = '0' then
         temp_erasures    <= (others => (others => '0'));
         temp_erasures(0) <= (0      => '1', others => '0');
-      elsif enable_operation = '1' then
+      elsif enable = '1' then
         temp_erasures <= erasures_helper;
       end if;
     end if;
@@ -131,7 +115,7 @@ begin
   -----------------------------------------------------------------------------
   process(counter)
   begin
-    if counter /= N_LENGTH - 1 then
+    if counter /= N_LENGTH then
       done <= '0';
     else
       done <= '1';

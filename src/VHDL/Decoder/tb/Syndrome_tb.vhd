@@ -56,16 +56,23 @@ begin
   end process;
 
   process
-    variable line_num : line;
-    variable value    : field_element;
   begin
-    rcv <= (others => '0');
     ena <= '0';
     wait until clk'event and clk = '1' and rst = '0';
     wait for 10 ns;
     ena <= '1';
     wait for 10 ns;
     ena <= '0';
+    wait;
+  end process;
+  
+  process
+    variable line_num : line;
+    variable value    : field_element;
+  begin
+    rcv <= (others => '0');
+    wait until ena = '1';
+--    wait until clk'event and clk = '1' and rst = '0';
     
     while not endfile(fd_in) loop
       readline (fd_in, line_num);

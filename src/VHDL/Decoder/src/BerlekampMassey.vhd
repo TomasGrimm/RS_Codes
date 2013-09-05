@@ -5,15 +5,13 @@ use work.ReedSolomon.all;
 
 -- Implementation of the invertionless Berlekamp-Massey algorithm
 
--- para o calculo do omega dar certo, ainda falta deslocar para a direita uma
--- posição por pulso de clock, como era feito o calculo usando a FSM
-
 entity BerlekampMassey is
   port (
     clock    : in std_logic;
     reset    : in std_logic;
     enable   : in std_logic;
     syndrome : in T2less1_array;
+    erasures : in T2less1_array;
 
     done            : out std_logic;
     error_locator   : out T_array;
@@ -103,7 +101,7 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or enable = '1' then
+      if reset = '1' or enable = '1' or enable_evaluator = '1' then
         locator_counter <= (others => '0');
       elsif phase = "11" and locator_counter < T2 then
         locator_counter <= locator_counter + 1;
@@ -172,9 +170,10 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or enable = '1' then
-        sigma    <= (others => (others => '0'));
-        sigma(0) <= (0      => '1', others => '0');
+      if reset = '1' then
+        sigma <= (others => (others => '0'));
+      elsif enable = '1' then
+        sigma <= erasures;
       elsif phase = "11" and enable_locator = '1' then
         sigma(0) <= temp_sigma(0);
         for i in 1 to T2 - 1 loop
@@ -191,8 +190,9 @@ begin
   begin
     if clock'event and clock = '1' then
       if reset = '1' then
-        temp_sigma    <= (others => (others => '0'));
-        temp_sigma(0) <= (0      => '1', others => '0');
+        temp_sigma <= (others => (others => '0'));
+      elsif enable = '1' then
+        temp_sigma <= erasures;
       elsif enable_locator = '1' then
         if phase = "01" then
           temp_sigma <= multiplicator_output;
@@ -208,8 +208,9 @@ begin
   begin
     if clock'event and clock = '1' then
       if reset = '1' then
-        B    <= (others => (others => '0'));
-        B(0) <= (0      => '1', others => '0');
+        B <= (others => (others => '0'));
+      elsif enable = '1' then
+        B <= erasures;
       elsif phase = "11" and locator_counter < T2 then
         if delta = '0' then
           B <= all_zeros & B(0 to T2 - 2);
@@ -276,7 +277,7 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' then
+      if reset = '1' or enable_evaluator = '0' then
         evaluator_counter <= (others => '0');
       elsif enable_evaluator = '1' and evaluator_counter < T2 - 1 then
         evaluator_counter <= evaluator_counter + 1;
