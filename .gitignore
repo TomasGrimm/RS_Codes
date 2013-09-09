@@ -13,3 +13,9 @@ work/
 
 # emacs buffer files
 *#
+
+# C executable files
+*.out
+
+# IP Gen vhd output files
+src/C/IP Gen/src/*.vhd
