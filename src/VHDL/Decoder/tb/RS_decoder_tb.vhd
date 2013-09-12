@@ -17,7 +17,7 @@ architecture RS_decoder_tb of RS_decoder_tb is
       start_block : in  std_logic;
       erase       : in  std_logic;
       data_in     : in  field_element;
-      --error    : out std_logic;
+      fail        : out std_logic;
       done        : out std_logic;
       data_out    : out field_element);
   end component;
@@ -26,8 +26,11 @@ architecture RS_decoder_tb of RS_decoder_tb is
   signal rst      : std_logic;
   signal srt_blk  : std_logic;
   signal era      : std_logic;
+  signal fl       : std_logic;
   signal dne      : std_logic;
   signal din, dot : field_element;
+
+  signal counter : integer;
 
   signal cf_processing   : std_logic;
   signal output_codeword : std_logic;
@@ -43,7 +46,7 @@ begin
       start_block => srt_blk,
       erase       => era,
       data_in     => din,
-      --error => ,
+      fail        => fl,
       done        => dne,
       data_out    => dot);
 
@@ -74,25 +77,28 @@ begin
     variable line_num : line;
     variable value    : field_element;
   begin
-    era     <= '0';
-    din     <= (others => '0');
+    era <= '0';
+    din <= (others => '0');
+
+    counter <= 255;
 
     wait until srt_blk = '1';
-    
+    wait until srt_blk = '0';
+
     while not endfile(fd_in) loop
       readline (fd_in, line_num);
       read (line_num, value);
       din <= value;
 
+      counter <= counter - 1;
+      
       era <= '0';
 
-      if din = "11110100" then
-        era <= '1';
-      elsif din = "00011000" then
-        era <= '1';
-      elsif din = "11010111" then
-        era <= '1';
-      elsif din = "10010011" then
+      if coUnter = 241
+        or counter = 221
+        or counter = 61
+        or counter = 41
+        or counter = 21 then
         era <= '1';
       end if;
 

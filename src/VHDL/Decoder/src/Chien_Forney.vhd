@@ -4,18 +4,16 @@ use IEEE.numeric_std.all;
 use work.ReedSolomon.all;
 
 -- Chien search and Forney's algorithm module
--- This module has been designed following the architecture from Yuan's "A
--- Practical Guide to Error-Control Coding Using MATLAB" page 148.
 
 entity Chien_Forney is
   port (
-    clock           : in std_logic;     -- clock signal
-    reset           : in std_logic;     -- reset signal
-    enable          : in std_logic;  -- enables this unit when the key equation is ready
-    error_locator   : in T_array;
+    clock           : in std_logic;
+    reset           : in std_logic;
+    enable          : in std_logic;
+    error_locator   : in T2less1_array;
     error_evaluator : in T2less1_array;
 
-    done            : out std_logic;    -- signals when the search is done
+    done            : out std_logic;
     is_root         : out std_logic;
     processing      : out std_logic;
     error_index     : out unsigned(T - 1 downto 0);
@@ -43,9 +41,9 @@ architecture Chien_Forney of Chien_Forney is
   signal sigma_derived  : field_element;
   signal sigma_inverted : field_element;
 
-  signal error_locator_out     : T_array;
-  signal partial_error_locator : T_array;
-  signal sigma_input           : T_array;
+  signal error_locator_out     : T2less1_array;
+  signal partial_error_locator : T2less1_array;
+  signal sigma_input           : T2less1_array;
 
   signal error_evaluator_out     : T2less1_array;
   signal partial_error_evaluator : T2less1_array;
@@ -64,21 +62,19 @@ begin
   -- alpha^0, the first iteration uses the variable sigma_alpha_zero.
   -- For the other n - 1 iterations, the variable sigma_alphas is used, so that
   -- every new iteration has the previous result multiplied by alpha.
-  sigma_input <= (others => (others => '0')) when reset = '1' else
-                 T_array(alpha_zero_array(0 to T)) when enable = '1' else
-                 T_array(roots(0 to T));
+  sigma_input <= alpha_zero_array when enable = '1' else
+                 roots;
 
   -- When the Forney algorithm starts, the first element to multiply the error
   -- evaluator polynomial is alpha^0, and as all the powers of alpha^0 are equal to
   -- alpha^0, the first iteration uses the variable omega_alpha_zero.
   -- For the other n - 1 iterations, the variable omega_alphas is used, so that
   -- every new iteration has the previous result multiplied by alpha.
-  omega_input <= (others => (others => '0')) when reset = '1' else
-                 alpha_zero_array when enable = '1' else
+  omega_input <= alpha_zero_array when enable = '1' else
                  roots;
 
   -- The error locator polynomial has to be evaluated for each value of alpha
-  error_locator_terms : for I in 0 to T generate
+  error_locator_terms : for I in 0 to (T2 - 1) generate
     term : field_element_multiplier port map (sigma_input(I), partial_error_locator(I), error_locator_out(I));
   end generate;
 
@@ -96,7 +92,14 @@ begin
                error_locator_out(5) xor
                error_locator_out(6) xor
                error_locator_out(7) xor
-               error_locator_out(8) when enable_operation = '1' else
+               error_locator_out(8) xor
+               error_locator_out(9) xor
+               error_locator_out(10) xor
+               error_locator_out(11) xor
+               error_locator_out(12) xor
+               error_locator_out(13) xor
+               error_locator_out(14) xor
+               error_locator_out(15) when enable_operation = '1' else
                (others => '0');
 
   -- If the error locator polynomial is evaluated as zero, than a root has been
@@ -109,7 +112,11 @@ begin
   sigma_derived <= error_locator_out(1) xor
                    error_locator_out(3) xor
                    error_locator_out(5) xor
-                   error_locator_out(7) when enable_operation = '1' else
+                   error_locator_out(7) xor
+                   error_locator_out(9) xor
+                   error_locator_out(11) xor
+                   error_locator_out(13) xor
+                   error_locator_out(15) when enable_operation = '1' else
                    (others => '0');
 
   -- After being evaluated, all the terms from the error locator polynomial must be summed.
@@ -154,7 +161,7 @@ begin
   end process;
 
   -----------------------------------------------------------------------------
-  -- Index control
+  -- Control of the index
   -----------------------------------------------------------------------------
   process(clock)
   begin

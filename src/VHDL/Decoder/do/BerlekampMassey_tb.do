@@ -5,7 +5,7 @@ vlib work
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
 vcom ../src/BerlekampMassey.vhd 
-vcom BerlekampMassey_tb.vhd
+vcom ../tb/BerlekampMassey_tb.vhd
 
 vsim -t ns work.BerlekampMassey_tb
 
@@ -13,6 +13,8 @@ add wave -label clk /BerlekampMassey_tb/clk
 add wave -label rst /BerlekampMassey_tb/rst
 add wave -label ena /BerlekampMassey_tb/ena
 add wave -label syn /BerlekampMassey_tb/syn
+add wave -label eras /BerlekampMassey_tb/eras
+add wave -label count /BerlekampMassey_tb/count
 add wave -label dne /BerlekampMassey_tb/dne
 add wave -label elp /BerlekampMassey_tb/elp
 add wave -label eep /BerlekampMassey_tb/eep
@@ -40,7 +42,7 @@ add wave -label mult_out /berlekampmassey_tb/BM/multiplicator_output
 add wave -label omega /berlekampmassey_tb/BM/omega
 add wave -label evaluator_counter -radix unsigned /berlekampmassey_tb/BM/evaluator_counter
 
-run 1500 ns
+run 800 ns
 wave zoom full
 
 #quit -f

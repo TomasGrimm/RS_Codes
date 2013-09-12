@@ -6,7 +6,7 @@ vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
 vcom ../../Auxiliary/src/inversion_table.vhd
 vcom ../src/Chien_Forney.vhd 
-vcom Chien_Forney_tb.vhd
+vcom ../tb/Chien_Forney_tb.vhd
 
 vsim work.Chien_Forney_tb
 view wave

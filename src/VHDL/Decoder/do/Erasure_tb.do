@@ -5,7 +5,7 @@ vlib work
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
 vcom ../src/Erasure.vhd 
-vcom Erasure_tb.vhd
+vcom ../tb/Erasure_tb.vhd
 
 vsim -t ns work.Erasure_tb
 

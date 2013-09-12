@@ -5,7 +5,7 @@ vlib work
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
 vcom ../src/Syndrome.vhd 
-vcom Syndrome_tb.vhd
+vcom ../tb/Syndrome_tb.vhd
 
 vsim work.Syndrome_tb
 

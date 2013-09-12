@@ -16,7 +16,7 @@ entity Syndrome is
   port (
     clock           : in std_logic;
     reset           : in std_logic;
-    enable          : in std_logic;
+    start           : in std_logic;
     received_vector : in field_element;
 
     done     : out std_logic;
@@ -31,10 +31,12 @@ architecture Syndrome of Syndrome is
       w : out field_element);
   end component;
 
+  signal enable_operation : std_logic;
+
   signal registers       : T2less1_array;
   signal multiplications : T2less1_array;
 
-  signal counter : unsigned(7 downto 0);
+  signal counter : unsigned(T - 1 downto 0);
   
 begin
   multipliers : for I in 0 to T2 - 1 generate
@@ -42,14 +44,28 @@ begin
   end generate multipliers;
 
   -----------------------------------------------------------------------------
+  -- Enable operation
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' or counter = N_LENGTH then
+        enable_operation <= '0';
+      elsif start = '1' then
+        enable_operation <= '1';
+      end if;
+    end if;
+  end process;
+  
+  -----------------------------------------------------------------------------
   -- Counter to control the syndrome calculation
   -----------------------------------------------------------------------------
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or enable = '0' then
+      if reset = '1' or enable_operation = '0' then
         counter <= (others => '0');
-      elsif enable = '1' then
+      elsif enable_operation = '1' then
         counter <= counter + 1;
       end if;
     end if;
@@ -61,9 +77,9 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' then
+      if reset = '1' or start = '1' then
         registers <= (others => (others => '0'));
-      elsif enable = '1' then
+      elsif enable_operation = '1' then
         for i in 0 to T2 - 1 loop
           registers(i) <= received_vector xor multiplications(i);
         end loop;
