@@ -27,6 +27,9 @@ architecture BerlekampMassey of BerlekampMassey is
       w : out field_element);
   end component;
 
+  type   states is (init, wait_enable, update_syndrome, update_done);
+  signal current_state, next_state : states;
+
   signal delta             : std_logic;
   signal enable_locator    : std_logic;
   signal enable_evaluator  : std_logic;
@@ -44,6 +47,7 @@ architecture BerlekampMassey of BerlekampMassey is
   signal omega                 : T2less1_array;
   signal sigma                 : T2less1_array;
   signal temp_sigma            : T2less1_array;
+  signal temp_syndrome         : T2less1_array;
   signal sigma_helper          : T2less1_array;
 
   signal phase : unsigned(1 downto 0);
@@ -72,6 +76,74 @@ begin
            '0' when phase = "00";
 
   -----------------------------------------------------------------------------
+  -- Update syndrome for erasure decoding
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        current_state <= init;
+      else
+        current_state <= next_state;
+      end if;
+    end if;
+  end process;
+
+  process(current_state, enable, update_count)
+  begin
+    case current_state is
+      when init =>
+        next_state <= wait_enable;
+      when wait_enable =>
+        if enable = '1' then
+          next_state <= update_syndrome;
+        else
+          next_state <= wait_enable;
+        end if;
+      when update_syndrome =>
+        if update_count = erasures_count - 1 then
+          next_state <= update_done;
+        else
+          next_state <= update_syndrome;
+        end if;
+      when update_done =>
+        next_state <= init;
+      when others =>
+        next_state <= init;
+    end case;
+  end process;
+
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      case current_state is
+        when init =>
+          updating_syndrome <= '0';
+          syndrome_updated  <= '0';
+          update_count      <= (others => '0');
+          
+        when wait_enable =>
+          updating_syndrome <= '0';
+          syndrome_updated  <= '0';
+          update_count      <= (others => '0');
+          
+          temp_syndrome(0)  <= syndrome(0);
+          for i in 1 to T2 - 1 loop
+            temp_syndrome(i) <= syndrome(T2 - i);
+          end loop;
+          
+        when update_syndrome =>
+          temp_syndrome <= temp_syndrome(T2 - 1) & temp_syndrome(0 to T2 - 2);
+          update_count  <= update_count + 1;
+          
+        when update_done =>
+          syndrome_updated <= '1';
+          
+      end case;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
   -- Enable error locator polynomial calculation
   -----------------------------------------------------------------------------
   process(clock)
@@ -81,48 +153,6 @@ begin
         enable_locator <= '0';
       elsif syndrome_updated = '1' and locator_counter < T2 - 1 - to_integer(erasures_count) then
         enable_locator <= '1';
-      end if;
-    end if;
-  end process;
-
-  -----------------------------------------------------------------------------
-  -- Enable syndrome update for erasure initialization
-  -----------------------------------------------------------------------------
-  process(clock)
-  begin
-    if clock'event and clock = '1' then
-      if reset = '1' or update_count = erasures_count - 1 then
-        updating_syndrome <= '0';
-      elsif enable = '1' and erasures_count < T2 then
-        updating_syndrome <= '1';
-      end if;
-    end if;
-  end process;
-
-  -----------------------------------------------------------------------------
-  -- Count the number of shifts on the syndrome register
-  -----------------------------------------------------------------------------
-  process(clock)
-  begin
-    if clock'event and clock = '1' then
-      if reset = '1' or enable = '1' then
-        update_count <= (others => '0');
-      elsif updating_syndrome = '1' then
-        update_count <= update_count + 1;
-      end if;
-    end if;
-  end process;
-
-  -----------------------------------------------------------------------------
-  -- Signal when syndrome register is updated
-  -----------------------------------------------------------------------------
-  process(clock)
-  begin
-    if clock'event and clock = '1' then
-      if reset = '1' or enable_locator = '1' then
-        syndrome_updated <= '0';
-      elsif updating_syndrome = '1' and update_count = erasures_count - 1 then
-        syndrome_updated <= '1';
       end if;
     end if;
   end process;
@@ -165,12 +195,9 @@ begin
     if clock'event and clock = '1' then
       if reset = '1' then
         discrepancy_syndromes <= (others => (others => '0'));
-      elsif enable = '1' then
-        discrepancy_syndromes(0) <= syndrome(0);
-        for i in 1 to T2 - 1 loop
-          discrepancy_syndromes(i) <= syndrome(T2 - i);
-        end loop;
-      elsif updating_syndrome = '1' or (enable_locator = '1' and phase = "11") then
+      elsif syndrome_updated = '1' then
+        discrepancy_syndromes <= temp_syndrome;
+      elsif enable_locator = '1' and phase = "11" then
         discrepancy_syndromes <= discrepancy_syndromes(T2 - 1) & discrepancy_syndromes(0 to T2 - 2);
       elsif (locator_counter = T2 - erasures_count and enable_evaluator = '0') or (enable = '1' and erasures_count = T2) then
         discrepancy_syndromes <= syndrome;

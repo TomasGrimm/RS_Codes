@@ -33,7 +33,7 @@ architecture RS_decoder_tb of RS_decoder_tb is
   signal counter : integer;
 
   signal cf_processing   : std_logic;
-  signal output_codeword : std_logic;
+  signal received_is_codeword : std_logic;
 
   file fd_in  : text open read_mode is "../../Tests/received.txt";
   file fd_out : text open write_mode is "../../Tests/estimated_vhdl.txt";
@@ -53,7 +53,7 @@ begin
   process
   begin
     init_signal_spy("/RS_decoder_tb/decoder/cf_processing", "/RS_decoder_tb/cf_processing", 1, 1);
-    init_signal_spy("/RS_decoder_tb/decoder/output_codeword", "/RS_decoder_tb/output_codeword", 1, 1);
+    init_signal_spy("/RS_decoder_tb/decoder/received_is_codeword", "/RS_decoder_tb/received_is_codeword", 1, 1);
     wait;
   end process;
 
@@ -94,11 +94,12 @@ begin
       
       era <= '0';
 
-      if coUnter = 241
-        or counter = 221
-        or counter = 61
-        or counter = 41
-        or counter = 21 then
+      if counter = 241
+      --  or counter = 221
+      --  or counter = 61
+      --  or counter = 41
+      --  or counter = 21
+      then
         era <= '1';
       end if;
 
@@ -122,7 +123,7 @@ begin
     variable line_num : line;
     variable counter  : integer := 0;
   begin
-    wait until cf_processing = '1' or output_codeword = '1';
+    wait until cf_processing = '1' or received_is_codeword = '1';
 
     while counter < N_LENGTH + 1 loop
       write(line_num, dot);
