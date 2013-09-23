@@ -89,16 +89,18 @@ begin
     end if;
   end process;
 
-  process(current_state, enable, update_count)
+  process(current_state, enable, update_count, erasures_count)
   begin
     case current_state is
       when init =>
         next_state <= wait_enable;
       when wait_enable =>
         if enable = '1' then
-          next_state <= update_syndrome;
-        else
-          next_state <= wait_enable;
+          if erasures_count > 0 and erasures_count < T2 - 1 then
+            next_state <= update_syndrome;
+          else
+            next_state <= wait_enable;
+          end if;
         end if;
       when update_syndrome =>
         if update_count = erasures_count - 1 then
@@ -126,8 +128,8 @@ begin
           updating_syndrome <= '0';
           syndrome_updated  <= '0';
           update_count      <= (others => '0');
-          
-          temp_syndrome(0)  <= syndrome(0);
+
+          temp_syndrome(0) <= syndrome(0);
           for i in 1 to T2 - 1 loop
             temp_syndrome(i) <= syndrome(T2 - i);
           end loop;
@@ -151,7 +153,7 @@ begin
     if clock'event and clock = '1' then
       if reset = '1' or (locator_counter = T2 - 1 - erasures_count and phase = "11") then
         enable_locator <= '0';
-      elsif syndrome_updated = '1' and locator_counter < T2 - 1 - to_integer(erasures_count) then
+      elsif syndrome_updated = '1' and locator_counter <= T2 - 1 - to_integer(erasures_count) then
         enable_locator <= '1';
       end if;
     end if;
@@ -199,7 +201,9 @@ begin
         discrepancy_syndromes <= temp_syndrome;
       elsif enable_locator = '1' and phase = "11" then
         discrepancy_syndromes <= discrepancy_syndromes(T2 - 1) & discrepancy_syndromes(0 to T2 - 2);
-      elsif (locator_counter = T2 - erasures_count and enable_evaluator = '0') or (enable = '1' and erasures_count = T2) then
+      elsif (locator_counter = T2 - erasures_count and enable_evaluator = '0') then
+        discrepancy_syndromes <= syndrome;
+      elsif enable = '1' and (erasures_count = T2 or erasures_count = T2 - 1) then
         discrepancy_syndromes <= syndrome;
       elsif enable_evaluator = '1' then
         discrepancy_syndromes <= all_zeros & discrepancy_syndromes(0 to T2 - 2);
@@ -338,7 +342,9 @@ begin
     if clock'event and clock = '1' then
       if reset = '1' or evaluator_counter = T2 - 1 then
         enable_evaluator <= '0';
-      elsif (locator_counter = T2 - erasures_count and enable_locator = '0') or (enable = '1' and erasures_count = T2) then
+      elsif locator_counter = T2 - erasures_count and enable_locator = '0' then
+        enable_evaluator <= '1';
+      elsif enable = '1' and (erasures_count = T2 or erasures_count = T2 - 1) then
         enable_evaluator <= '1';
       end if;
     end if;
@@ -352,7 +358,7 @@ begin
     if clock'event and clock = '1' then
       if reset = '1' or evaluator_counter = T2 - 1 then
         evaluator_counter <= (others => '0');
-      elsif enable_evaluator = '1' and evaluator_counter < T2 - 1 then
+      elsif enable_evaluator = '1' and evaluator_counter < T2 then
         evaluator_counter <= evaluator_counter + 1;
       end if;
     end if;
@@ -364,7 +370,7 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or enable = '1' then
+      if reset = '1' or (enable = '1' and erasures_count < T2 - 1) then
         omega <= (others => (others => '0'));
       elsif enable_evaluator = '1' then
         for i in 0 to T2 - 1 loop
@@ -384,7 +390,7 @@ begin
         sigma_helper <= (others => (others => '0'));
       elsif locator_counter = T2 - erasures_count and enable_evaluator = '0' then
         sigma_helper <= sigma;
-      elsif enable = '1' and erasures_count = T2 then
+      elsif enable = '1' and (erasures_count = T2 or erasures_count = T2 - 1) then
         sigma_helper <= erasures;
       elsif enable_evaluator = '1' then
         sigma_helper <= sigma_helper(1 to T2 - 1) & all_zeros;
@@ -404,7 +410,7 @@ begin
     end if;
   end process;
 
-  error_locator <= erasures when erasures_count = T2 else
+  error_locator <= erasures when (erasures_count = T2 or erasures_count = T2 - 1) else
                    sigma;
   error_evaluator <= omega;
 end architecture;

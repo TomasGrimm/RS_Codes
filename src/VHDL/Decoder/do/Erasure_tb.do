@@ -18,7 +18,7 @@ add wave -label str /Erasure_tb/str
 add wave -label era /Erasure_tb/era
 add wave -label dne /Erasure_tb/dne
 add wave -label ers /Erasure_tb/ers
-add wave -label cnt /Erasure_tb/cnt
+add wave -label cnt -radix unsigned /Erasure_tb/cnt
 
 add wave -divider
 

@@ -95,10 +95,21 @@ begin
       era <= '0';
 
       if counter = 241
-      --  or counter = 221
-      --  or counter = 61
-      --  or counter = 41
-      --  or counter = 21
+        or counter = 221
+        or counter = 61
+        or counter = 41
+        or counter = 21
+        or counter = 22
+        or counter = 23
+        or counter = 24
+        or counter = 25
+        or counter = 26
+        or counter = 27
+        or counter = 28
+        or counter = 29
+        or counter = 20
+        or counter = 30
+--        or counter = 40
       then
         era <= '1';
       end if;

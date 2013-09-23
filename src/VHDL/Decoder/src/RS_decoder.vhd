@@ -257,22 +257,22 @@ begin
       if reset = '1' or syndrome_done = '0' then
         enable_bm <= '0';
       elsif syndrome_done = '1' and cf_done = '0' then
-        if syndrome_output(0) /= all_zeros
-          and syndrome_output(1) /= all_zeros
-          and syndrome_output(2) /= all_zeros
-          and syndrome_output(3) /= all_zeros
-          and syndrome_output(4) /= all_zeros
-          and syndrome_output(5) /= all_zeros
-          and syndrome_output(6) /= all_zeros
-          and syndrome_output(7) /= all_zeros
-          and syndrome_output(8) /= all_zeros
-          and syndrome_output(9) /= all_zeros
-          and syndrome_output(10) /= all_zeros
-          and syndrome_output(11) /= all_zeros
-          and syndrome_output(12) /= all_zeros
-          and syndrome_output(13) /= all_zeros
-          and syndrome_output(14) /= all_zeros
-          and syndrome_output(15) /= all_zeros
+        if (syndrome_output(0) /= all_zeros
+            or syndrome_output(1) /= all_zeros
+            or syndrome_output(2) /= all_zeros
+            or syndrome_output(3) /= all_zeros
+            or syndrome_output(4) /= all_zeros
+            or syndrome_output(5) /= all_zeros
+            or syndrome_output(6) /= all_zeros
+            or syndrome_output(7) /= all_zeros
+            or syndrome_output(8) /= all_zeros
+            or syndrome_output(9) /= all_zeros
+            or syndrome_output(10) /= all_zeros
+            or syndrome_output(11) /= all_zeros
+            or syndrome_output(12) /= all_zeros
+            or syndrome_output(13) /= all_zeros
+            or syndrome_output(14) /= all_zeros
+            or syndrome_output(15) /= all_zeros)
           and erasures_count < T2 then
           enable_bm <= '1';
         else
@@ -309,23 +309,23 @@ begin
       if reset = '1' or cf_done = '0' then
         fail <= '0';
       elsif syndrome_done = '1' and cf_done = '1' then
-        if (cf_done = '1' 
-          and syndrome_output(0) /= all_zeros
-          and syndrome_output(1) /= all_zeros
-          and syndrome_output(2) /= all_zeros
-          and syndrome_output(3) /= all_zeros
-          and syndrome_output(4) /= all_zeros
-          and syndrome_output(5) /= all_zeros
-          and syndrome_output(6) /= all_zeros
-          and syndrome_output(7) /= all_zeros
-          and syndrome_output(8) /= all_zeros
-          and syndrome_output(9) /= all_zeros
-          and syndrome_output(10) /= all_zeros
-          and syndrome_output(11) /= all_zeros
-          and syndrome_output(12) /= all_zeros
-          and syndrome_output(13) /= all_zeros
-          and syndrome_output(14) /= all_zeros
-          and syndrome_output(15) /= all_zeros)
+        if (cf_done = '1'
+            and syndrome_output(0) /= all_zeros
+            and syndrome_output(1) /= all_zeros
+            and syndrome_output(2) /= all_zeros
+            and syndrome_output(3) /= all_zeros
+            and syndrome_output(4) /= all_zeros
+            and syndrome_output(5) /= all_zeros
+            and syndrome_output(6) /= all_zeros
+            and syndrome_output(7) /= all_zeros
+            and syndrome_output(8) /= all_zeros
+            and syndrome_output(9) /= all_zeros
+            and syndrome_output(10) /= all_zeros
+            and syndrome_output(11) /= all_zeros
+            and syndrome_output(12) /= all_zeros
+            and syndrome_output(13) /= all_zeros
+            and syndrome_output(14) /= all_zeros
+            and syndrome_output(15) /= all_zeros)
           or (erasure_done = '1' and erasures_count >= T2) then
           fail <= '1';
         else
