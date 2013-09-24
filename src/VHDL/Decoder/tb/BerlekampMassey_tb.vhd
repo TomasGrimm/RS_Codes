@@ -20,8 +20,7 @@ architecture BerlekampMassey_tb of BerlekampMassey_tb is
       erasures_count : in unsigned(T downto 0);
 
       done            : out std_logic;
-      error_locator   : out T2less1_array;
-      error_evaluator : out T2less1_array);
+      error_locator   : out T2less1_array);
   end component;
 
   signal clk   : std_logic;
@@ -32,7 +31,6 @@ architecture BerlekampMassey_tb of BerlekampMassey_tb is
   signal eras  : T2less1_array;
   signal count : unsigned(T downto 0);
   signal elp   : T2less1_array;
-  signal eep   : T2less1_array;
 
   file syn_in : text open read_mode is "../../Tests/syndrome_golden.txt";
   file eras_in : text open read_mode is "../../Tests/erasures_golden.txt";
@@ -47,8 +45,7 @@ begin
       erasures        => eras,
       erasures_count  => count,
       done            => dne,
-      error_locator   => elp,
-      error_evaluator => eep);
+      error_locator   => elp);
 
   process
   begin

@@ -17,12 +17,10 @@ add wave -label eras /BerlekampMassey_tb/eras
 add wave -label count /BerlekampMassey_tb/count
 add wave -label dne /BerlekampMassey_tb/dne
 add wave -label elp /BerlekampMassey_tb/elp
-add wave -label eep /BerlekampMassey_tb/eep
 
 add wave -divider
 
 add wave -label enable_locator /BerlekampMassey_tb/BM/enable_locator
-add wave -label enable_evaluator /BerlekampMassey_tb/BM/enable_evaluator
 add wave -label discrepancy /BerlekampMassey_tb/BM/discrepancy
 add wave -label sigma /berlekampmassey_tb/BM/sigma
 add wave -label temp_sigma /berlekampmassey_tb/BM/temp_sigma
@@ -39,8 +37,6 @@ add wave -label discrepancy_syndromes /berlekampmassey_tb/BM/discrepancy_syndrom
 add wave -label mult_in1 /berlekampmassey_tb/BM/multiplicator_input_1
 add wave -label mult_in2 /berlekampmassey_tb/BM/multiplicator_input_2
 add wave -label mult_out /berlekampmassey_tb/BM/multiplicator_output
-add wave -label omega /berlekampmassey_tb/BM/omega
-add wave -label evaluator_counter -radix unsigned /berlekampmassey_tb/BM/evaluator_counter
 
 run 800 ns
 wave zoom full

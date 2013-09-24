@@ -43,20 +43,31 @@ architecture RS_decoder of RS_decoder is
       enable         : in  std_logic;
       erase          : in  std_logic;
       done           : out std_logic;
-      erasures       : out T2less1_array;
+      erasures       : out T2_array;
       erasures_count : out unsigned(T downto 0));
   end component;
 
   component BerlekampMassey is
     port (
-      clock           : in  std_logic;
-      reset           : in  std_logic;
-      enable          : in  std_logic;
-      syndrome        : in  T2less1_array;
-      erasures        : in  T2less1_array;
-      erasures_count  : in  unsigned(T downto 0);
+      clock          : in  std_logic;
+      reset          : in  std_logic;
+      enable         : in  std_logic;
+      syndrome       : in  T2less1_array;
+      erasures       : in  T2less1_array;
+      erasures_count : in  unsigned(T downto 0);
+      done           : out std_logic;
+      error_locator  : out T2less1_array);
+  end component;
+
+  component Omega is
+    port (
+      clock         : in std_logic;
+      reset         : in std_logic;
+      enable        : in std_logic;
+      syndrome      : in T2less1_array;
+      error_locator : in T2_array;
+
       done            : out std_logic;
-      error_locator   : out T2less1_array;
       error_evaluator : out T2less1_array);
   end component;
 
@@ -65,7 +76,7 @@ architecture RS_decoder of RS_decoder is
       clock           : in  std_logic;
       reset           : in  std_logic;
       enable          : in  std_logic;
-      error_locator   : in  T2less1_array;
+      error_locator   : in  T2_array;
       error_evaluator : in  T2less1_array;
       done            : out std_logic;
       is_root         : out std_logic;
@@ -80,20 +91,26 @@ architecture RS_decoder of RS_decoder is
   signal cf_root              : std_logic;
   signal decoding_done        : std_logic;
   signal enable_bm            : std_logic;
+  signal enable_omega         : std_logic;
   signal erasure_done         : std_logic;
+  signal omega_done           : std_logic;
   signal received_is_codeword : std_logic;
   signal start_syndrome       : std_logic;
   signal store_received_poly  : std_logic;
   signal syndrome_done        : std_logic;
 
-  signal erasure_output : T2less1_array;
-  signal erasure_reg    : T2less1_array;
+  signal erasure_output : T2_array;
+  signal erasure_reg    : T2_array;
 
   signal syndrome_output : T2less1_array;
   signal syndrome_reg    : T2less1_array;
 
   signal bm_locator_output   : T2less1_array;
   signal bm_evaluator_output : T2less1_array;
+
+  signal error_locator_poly : T2_array;
+
+  signal omega_output : T2less1_array;
 
   signal cf_magnitude : field_element;
   signal syndrome_in  : field_element;
@@ -126,23 +143,32 @@ begin
 
   bm_module : BerlekampMassey
     port map (
+      clock          => clock,
+      reset          => reset,
+      enable         => enable_bm,
+      syndrome       => syndrome_reg,
+      erasures       => T2less1_array(erasure_reg(0 to T2 - 1)),
+      erasures_count => erasures_count,
+      done           => bm_done,
+      error_locator  => bm_locator_output);
+
+  omega_module : Omega
+    port map (
       clock           => clock,
       reset           => reset,
-      enable          => enable_bm,
+      enable          => enable_omega,
       syndrome        => syndrome_reg,
-      erasures        => erasure_reg,
-      erasures_count  => erasures_count,
-      done            => bm_done,
-      error_locator   => bm_locator_output,
-      error_evaluator => bm_evaluator_output);
+      error_locator   => error_locator_poly,
+      done            => omega_done,
+      error_evaluator => omega_output);
 
   cf_module : Chien_Forney
     port map (
       clock           => clock,
       reset           => reset,
-      enable          => bm_done,
-      error_locator   => bm_locator_output,
-      error_evaluator => bm_evaluator_output,
+      enable          => omega_done,
+      error_locator   => error_locator_poly,
+      error_evaluator => omega_output,
       done            => cf_done,
       is_root         => cf_root,
       processing      => cf_processing,
@@ -152,16 +178,16 @@ begin
   -----------------------------------------------------------------------------
   -- Syndrome reset signal
   -----------------------------------------------------------------------------
-  start_syndrome <= '1' when start_block = '1' or bm_done = '1' else
+  start_syndrome <= '1' when start_block = '1' or omega_done = '1' else
                     '0';
 
   -----------------------------------------------------------------------------
   -- Set syndrome input
   -----------------------------------------------------------------------------
   syndrome_in <= data_in when store_received_poly = '1' and erase = '0' else
-                 (others => '0')                         when store_received_poly = '1' and erase = '1' else
-                 received(N_LENGTH - 1)                  when cf_root = '0' and cf_processing = '1'     else
-                 received(N_LENGTH - 1) xor cf_magnitude when cf_root = '1' and cf_processing = '1';
+                 all_zeros                               when store_received_poly = '1' and erase = '1' else
+                 received(N_LENGTH - 1)                  when cf_processing = '1' and cf_root = '0'     else
+                 received(N_LENGTH - 1) xor cf_magnitude when cf_processing = '1' and cf_root = '1';
 
   -----------------------------------------------------------------------------
   -- Register syndrome output
@@ -273,7 +299,7 @@ begin
             or syndrome_output(13) /= all_zeros
             or syndrome_output(14) /= all_zeros
             or syndrome_output(15) /= all_zeros)
-          and erasures_count < T2 then
+          and erasures_count < T2 - 1 then
           enable_bm <= '1';
         else
           enable_bm <= '0';
@@ -281,6 +307,43 @@ begin
       end if;
     end if;
   end process;
+
+  -----------------------------------------------------------------------------
+  -- Enable omega determination
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if bm_done = '1' or (erasure_done = '1' and (erasures_count = T2 - 1 or erasures_count = T2)) then
+        enable_omega <= '1';
+      else
+        enable_omega <= '0';
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Select error locator polynomial's source
+  -----------------------------------------------------------------------------
+  error_locator_poly <= bm_locator_output(0) &
+                        bm_locator_output(1) &
+                        bm_locator_output(2) &
+                        bm_locator_output(3) &
+                        bm_locator_output(4) &
+                        bm_locator_output(5) &
+                        bm_locator_output(6) &
+                        bm_locator_output(7) &
+                        bm_locator_output(8) &
+                        bm_locator_output(9) &
+                        bm_locator_output(10) &
+                        bm_locator_output(11) &
+                        bm_locator_output(12) &
+                        bm_locator_output(13) &
+                        bm_locator_output(14) &
+                        bm_locator_output(15) &
+                        all_zeros      when bm_done = '1'                                                             else
+                        erasure_output when (erasure_done = '1' and (erasures_count = T2 - 1 or erasures_count = T2)) else
+                        (others => (others => '0')) when reset = '1' or start_block = '1';
 
   -----------------------------------------------------------------------------
   -- Count symbols output when there are no errors
@@ -308,29 +371,27 @@ begin
     if clock'event and clock = '1' then
       if reset = '1' or cf_done = '0' then
         fail <= '0';
-      elsif syndrome_done = '1' and cf_done = '1' then
-        if (cf_done = '1'
-            and syndrome_output(0) /= all_zeros
-            and syndrome_output(1) /= all_zeros
-            and syndrome_output(2) /= all_zeros
-            and syndrome_output(3) /= all_zeros
-            and syndrome_output(4) /= all_zeros
-            and syndrome_output(5) /= all_zeros
-            and syndrome_output(6) /= all_zeros
-            and syndrome_output(7) /= all_zeros
-            and syndrome_output(8) /= all_zeros
-            and syndrome_output(9) /= all_zeros
-            and syndrome_output(10) /= all_zeros
-            and syndrome_output(11) /= all_zeros
-            and syndrome_output(12) /= all_zeros
-            and syndrome_output(13) /= all_zeros
-            and syndrome_output(14) /= all_zeros
-            and syndrome_output(15) /= all_zeros)
-          or (erasure_done = '1' and erasures_count >= T2) then
-          fail <= '1';
-        else
-          fail <= '0';
-        end if;
+      elsif (erasure_done = '1' and erasures_count > T2) then
+        fail <= '1';
+      elsif syndrome_done = '1' and cf_done = '1' and (syndrome_output(0) /= all_zeros
+                                                       or syndrome_output(1) /= all_zeros
+                                                       or syndrome_output(2) /= all_zeros
+                                                       or syndrome_output(3) /= all_zeros
+                                                       or syndrome_output(4) /= all_zeros
+                                                       or syndrome_output(5) /= all_zeros
+                                                       or syndrome_output(6) /= all_zeros
+                                                       or syndrome_output(7) /= all_zeros
+                                                       or syndrome_output(8) /= all_zeros
+                                                       or syndrome_output(9) /= all_zeros
+                                                       or syndrome_output(10) /= all_zeros
+                                                       or syndrome_output(11) /= all_zeros
+                                                       or syndrome_output(12) /= all_zeros
+                                                       or syndrome_output(13) /= all_zeros
+                                                       or syndrome_output(14) /= all_zeros
+                                                       or syndrome_output(15) /= all_zeros) then
+        fail <= '1';
+      else
+        fail <= '0';
       end if;
     end if;
   end process;

@@ -10,7 +10,7 @@ entity Erasure is
     enable         : in  std_logic;
     erase          : in  std_logic;
     done           : out std_logic;
-    erasures       : out T2less1_array;
+    erasures       : out T2_array;
     erasures_count : out unsigned(T downto 0));
 end Erasure;
 
@@ -29,17 +29,17 @@ architecture Erasure of Erasure is
 
   signal alpha : field_element;
 
-  signal temp_erasures      : T2less1_array;
-  signal multipliers_output : T2less1_array;
-  signal erasures_helper    : T2less1_array;
+  signal temp_erasures      : T2_array;
+  signal multipliers_output : T2_array;
+  signal erasures_helper    : T2_array;
   
 begin
-  multipliers : for I in 0 to T2 - 1 generate
+  multipliers : for I in 0 to T2 generate
     terms : field_element_multiplier port map (temp_erasures(I), alpha, multipliers_output(I));
   end generate multipliers;
 
   erasures_helper(0) <= alpha_zero when reset = '1';
-  addition : for J in 1 to T2 - 1 generate
+  addition : for J in 1 to T2 generate
     erasures_helper(J) <= (others => '0') when reset = '1' or enable = '1' else
                           multipliers_output(J - 1) xor temp_erasures(J) when erase = '1' and enable_operation = '1';
   end generate addition;

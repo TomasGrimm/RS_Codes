@@ -109,7 +109,7 @@ begin
         or counter = 29
         or counter = 20
         or counter = 30
---        or counter = 40
+        or counter = 40
       then
         era <= '1';
       end if;

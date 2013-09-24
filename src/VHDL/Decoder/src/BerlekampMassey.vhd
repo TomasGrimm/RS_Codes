@@ -14,9 +14,8 @@ entity BerlekampMassey is
     erasures       : in T2less1_array;
     erasures_count : in unsigned(T downto 0);
 
-    done            : out std_logic;
-    error_locator   : out T2less1_array;
-    error_evaluator : out T2less1_array);
+    done          : out std_logic;
+    error_locator : out T2less1_array);
 end entity;
 
 architecture BerlekampMassey of BerlekampMassey is
@@ -32,7 +31,6 @@ architecture BerlekampMassey of BerlekampMassey is
 
   signal delta             : std_logic;
   signal enable_locator    : std_logic;
-  signal enable_evaluator  : std_logic;
   signal syndrome_updated  : std_logic;
   signal updating_syndrome : std_logic;
 
@@ -44,7 +42,6 @@ architecture BerlekampMassey of BerlekampMassey is
   signal multiplicator_input_1 : T2less1_array;
   signal multiplicator_input_2 : T2less1_array;
   signal multiplicator_output  : T2less1_array;
-  signal omega                 : T2less1_array;
   signal sigma                 : T2less1_array;
   signal temp_sigma            : T2less1_array;
   signal temp_syndrome         : T2less1_array;
@@ -52,10 +49,9 @@ architecture BerlekampMassey of BerlekampMassey is
 
   signal phase : unsigned(1 downto 0);
 
-  signal evaluator_counter : unsigned(T downto 0);
-  signal L                 : unsigned(T downto 0);
-  signal locator_counter   : unsigned(T downto 0);
-  signal update_count      : unsigned(T downto 0);
+  signal L               : unsigned(T downto 0);
+  signal locator_counter : unsigned(T downto 0);
+  signal update_count    : unsigned(T downto 0);
   
 begin
   multiplicators : for I in 0 to T2 - 1 generate
@@ -64,13 +60,11 @@ begin
 
   multiplicator_input_1 <= discrepancy_syndromes when phase = "00" and enable_locator = '1' else
                            (others => theta)       when phase = "01" and enable_locator = '1' else
-                           (others => discrepancy) when phase = "10" and enable_locator = '1' else
-                           discrepancy_syndromes   when enable_evaluator = '1';
+                           (others => discrepancy) when phase = "10" and enable_locator = '1';
 
   multiplicator_input_2 <= sigma when phase = "00" and enable_locator = '1' else
-                           sigma                       when phase = "01" and enable_locator = '1' else
-                           B                           when phase = "10" and enable_locator = '1' else
-                           (others => sigma_helper(0)) when enable_evaluator = '1';
+                           sigma when phase = "01" and enable_locator = '1' else
+                           B     when phase = "10" and enable_locator = '1';
 
   delta <= '1' when (discrepancy /= all_zeros) and ((L + L) <= locator_counter) and enable_locator = '1' else
            '0' when phase = "00";
@@ -181,7 +175,7 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or enable = '1' or enable_evaluator = '1' then
+      if reset = '1' or enable = '1' or locator_counter = T2 - erasures_count then
         locator_counter <= (others => '0');
       elsif phase = "11" and locator_counter < T2 - erasures_count then
         locator_counter <= locator_counter + 1;
@@ -201,12 +195,6 @@ begin
         discrepancy_syndromes <= temp_syndrome;
       elsif enable_locator = '1' and phase = "11" then
         discrepancy_syndromes <= discrepancy_syndromes(T2 - 1) & discrepancy_syndromes(0 to T2 - 2);
-      elsif (locator_counter = T2 - erasures_count and enable_evaluator = '0') then
-        discrepancy_syndromes <= syndrome;
-      elsif enable = '1' and (erasures_count = T2 or erasures_count = T2 - 1) then
-        discrepancy_syndromes <= syndrome;
-      elsif enable_evaluator = '1' then
-        discrepancy_syndromes <= all_zeros & discrepancy_syndromes(0 to T2 - 2);
       end if;
     end if;
   end process;
@@ -335,82 +323,16 @@ begin
   end process;
 
   -----------------------------------------------------------------------------
-  -- Enable error evaluator polynomial calculation
-  -----------------------------------------------------------------------------
-  process(clock)
-  begin
-    if clock'event and clock = '1' then
-      if reset = '1' or evaluator_counter = T2 - 1 then
-        enable_evaluator <= '0';
-      elsif locator_counter = T2 - erasures_count and enable_locator = '0' then
-        enable_evaluator <= '1';
-      elsif enable = '1' and (erasures_count = T2 or erasures_count = T2 - 1) then
-        enable_evaluator <= '1';
-      end if;
-    end if;
-  end process;
-
-  -----------------------------------------------------------------------------
-  -- Error evaluator polynomial counter control
-  -----------------------------------------------------------------------------
-  process(clock)
-  begin
-    if clock'event and clock = '1' then
-      if reset = '1' or evaluator_counter = T2 - 1 then
-        evaluator_counter <= (others => '0');
-      elsif enable_evaluator = '1' and evaluator_counter < T2 then
-        evaluator_counter <= evaluator_counter + 1;
-      end if;
-    end if;
-  end process;
-
-  -----------------------------------------------------------------------------
-  -- Determine error evaluator polynomial
-  -----------------------------------------------------------------------------
-  process(clock)
-  begin
-    if clock'event and clock = '1' then
-      if reset = '1' or (enable = '1' and erasures_count < T2 - 1) then
-        omega <= (others => (others => '0'));
-      elsif enable_evaluator = '1' then
-        for i in 0 to T2 - 1 loop
-          omega(i) <= omega(i) xor multiplicator_output(i);
-        end loop;
-      end if;
-    end if;
-  end process;
-
-  -----------------------------------------------------------------------------
-  -- Sigma helper for error evaluator polynomial calculation
-  -----------------------------------------------------------------------------
-  process(clock)
-  begin
-    if clock'event and clock = '1' then
-      if reset = '1' then
-        sigma_helper <= (others => (others => '0'));
-      elsif locator_counter = T2 - erasures_count and enable_evaluator = '0' then
-        sigma_helper <= sigma;
-      elsif enable = '1' and (erasures_count = T2 or erasures_count = T2 - 1) then
-        sigma_helper <= erasures;
-      elsif enable_evaluator = '1' then
-        sigma_helper <= sigma_helper(1 to T2 - 1) & all_zeros;
-      end if;
-    end if;
-  end process;
-
-  -----------------------------------------------------------------------------
   -- Signal done
   -----------------------------------------------------------------------------
-  process(evaluator_counter)
+  process(locator_counter)
   begin
-    if evaluator_counter /= T2 - 1 then
+    if locator_counter /= T2 - to_integer(erasures_count) then
       done <= '0';
     else
       done <= '1';
     end if;
   end process;
 
-  error_locator <= erasures when (erasures_count = T2 or erasures_count = T2 - 1) else
-                   sigma;
-  error_evaluator <= omega;
+  error_locator <= sigma;
 end architecture;

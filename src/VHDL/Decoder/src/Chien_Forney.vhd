@@ -10,7 +10,7 @@ entity Chien_Forney is
     clock           : in std_logic;
     reset           : in std_logic;
     enable          : in std_logic;
-    error_locator   : in T2less1_array;
+    error_locator   : in T2_array;
     error_evaluator : in T2less1_array;
 
     done            : out std_logic;
@@ -41,9 +41,9 @@ architecture Chien_Forney of Chien_Forney is
   signal sigma_derived  : field_element;
   signal sigma_inverted : field_element;
 
-  signal error_locator_out     : T2less1_array;
-  signal partial_error_locator : T2less1_array;
-  signal sigma_input           : T2less1_array;
+  signal error_locator_out     : T2_array;
+  signal partial_error_locator : T2_array;
+  signal sigma_input           : T2_array;
 
   signal error_evaluator_out     : T2less1_array;
   signal partial_error_evaluator : T2less1_array;
@@ -51,7 +51,25 @@ architecture Chien_Forney of Chien_Forney is
 
   signal counter : unsigned(T - 1 downto 0);
 
-  constant alpha_zero_array : T2less1_array := (others => alpha_zero);
+  constant alpha_zero_array : T2_array := (others => alpha_zero);
+
+  constant alphas : T2_array := ("00000001",
+                                 "00000010",
+                                 "00000100",
+                                 "00001000",
+                                 "00010000",
+                                 "00100000",
+                                 "01000000",
+                                 "10000000",
+                                 "00011101",
+                                 "00111010",
+                                 "01110100",
+                                 "11101000",
+                                 "11001101",
+                                 "10000111",
+                                 "00010011",
+                                 "00100110",
+                                 "01001100");
 
 begin
   processing  <= enable_operation;
@@ -63,18 +81,18 @@ begin
   -- For the other n - 1 iterations, the variable sigma_alphas is used, so that
   -- every new iteration has the previous result multiplied by alpha.
   sigma_input <= alpha_zero_array when enable = '1' else
-                 roots;
+                 alphas;
 
   -- When the Forney algorithm starts, the first element to multiply the error
   -- evaluator polynomial is alpha^0, and as all the powers of alpha^0 are equal to
   -- alpha^0, the first iteration uses the variable omega_alpha_zero.
   -- For the other n - 1 iterations, the variable omega_alphas is used, so that
   -- every new iteration has the previous result multiplied by alpha.
-  omega_input <= alpha_zero_array when enable = '1' else
+  omega_input <= T2less1_array(alpha_zero_array(0 to T2 - 1)) when enable = '1' else
                  roots;
 
   -- The error locator polynomial has to be evaluated for each value of alpha
-  error_locator_terms : for I in 0 to (T2 - 1) generate
+  error_locator_terms : for I in 0 to T2 generate
     term : field_element_multiplier port map (sigma_input(I), partial_error_locator(I), error_locator_out(I));
   end generate;
 
@@ -99,7 +117,8 @@ begin
                error_locator_out(12) xor
                error_locator_out(13) xor
                error_locator_out(14) xor
-               error_locator_out(15) when enable_operation = '1' else
+               error_locator_out(15) xor
+               error_locator_out(16) when enable_operation = '1' else
                (others => '0');
 
   -- If the error locator polynomial is evaluated as zero, than a root has been
