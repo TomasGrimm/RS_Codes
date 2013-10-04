@@ -63,7 +63,7 @@ begin
     variable value    : field_element;
     variable counter  : integer := 0;
   begin
-    din <= "00000000";
+    din <= all_zeros;
     wait until clk'event and clk = '1' and m_str = '0' and rst = '0';
     while not endfile(fd_in) loop
       readline (fd_in, line_num);

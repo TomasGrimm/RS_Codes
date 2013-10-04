@@ -21,19 +21,22 @@ add wave /RS_coder_tb/dout
 
 add wave -divider
 
-add wave -label "done" /RS_coder_tb/coder/done
+#add wave -label "done" /RS_coder_tb/coder/done
 
-add wave -label message /RS_coder_tb/coder/message
+#add wave -label message /RS_coder_tb/coder/message
 
-add wave -label "msg_ctr" -radix unsigned /RS_coder_tb/coder/encode/message_counter
-add wave -label "prt_ctr" -radix unsigned /RS_coder_tb/coder/encode/parity_counter
-add wave -label "feed_through" /RS_coder_tb/coder/encode/feed_through
-add wave -label "multiplicand_poly" /RS_coder_tb/coder/encode/multiplicand_poly
-add wave -label "intermediary_poly" /RS_coder_tb/coder/encode/intermediary_poly
-add wave -label delay /RS_coder_tb/coder/delay
-add wave -label par_ready /RS_coder_tb/coder/par_ready
+#add wave -label "msg_ctr" -radix unsigned /RS_coder_tb/coder/encode/message_counter
+#add wave -label "prt_ctr" -radix unsigned /RS_coder_tb/coder/encode/parity_counter
+#add wave -label "feed_through" /RS_coder_tb/coder/encode/feed_through
+#add wave -label "multiplicand_poly" /RS_coder_tb/coder/encode/multiplicand_poly
+#add wave -label "intermediary_poly" /RS_coder_tb/coder/encode/intermediary_poly
+#add wave -label delay /RS_coder_tb/coder/delay
+#add wave -label par_ready /RS_coder_tb/coder/par_ready
 
-run 2700 ns
+add wave /RS_coder_tb/coder/*
+add wave /RS_coder_tb/coder/encode/*
+
+run 3000 ns
 wave zoom full
 
 #quit -f
