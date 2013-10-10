@@ -4,8 +4,7 @@ vlib work
 
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
-vcom -check_synthesis ../src/LFSR.vhd
-vcom -check_synthesis ../src/RS_coder.vhd 
+vcom ../src/RS_coder.vhd 
 vcom RS_coder_tb.vhd
 
 vsim -t ns work.RS_coder_tb
@@ -34,7 +33,6 @@ add wave -divider
 #add wave -label par_ready /RS_coder_tb/coder/par_ready
 
 add wave /RS_coder_tb/coder/*
-add wave /RS_coder_tb/coder/encode/*
 
 run 3000 ns
 wave zoom full
