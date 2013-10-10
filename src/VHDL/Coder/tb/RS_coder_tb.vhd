@@ -14,7 +14,6 @@ architecture RS_coder_tb of RS_coder_tb is
       clock         : in  std_logic;
       reset         : in  std_logic;
       message_start : in  std_logic;
-      message_end   : in  std_logic;
       message       : in  field_element;
       done          : out std_logic;
       codeword      : out field_element);
@@ -23,7 +22,6 @@ architecture RS_coder_tb of RS_coder_tb is
   signal clk   : std_logic;
   signal rst   : std_logic;
   signal m_str : std_logic;
-  signal m_end : std_logic;
   signal din   : field_element;
   signal dne   : std_logic;
   signal dout  : field_element;
@@ -36,7 +34,6 @@ begin
       clock         => clk,
       reset         => rst,
       message_start => m_str,
-      message_end   => m_end,
       message       => din,
       done          => dne,
       codeword      => dout);
@@ -66,30 +63,16 @@ begin
     variable value    : field_element;
     variable counter  : integer := 0;
   begin
-    m_end <= '0';
-    din <= "00000000";
+    din <= all_zeros;
     wait until clk'event and clk = '1' and m_str = '0' and rst = '0';
--- teste de palavra inteira -> k bytes
-    --while not endfile(fd_in) loop
-    --  readline (fd_in, line_num);
-    --  read (line_num, value);
-    --  din     <= value;
-    --  counter := counter + 1;
-    --  if counter = 239 then
-    --    m_end <= '1';
-    --  end if;
-    --  wait until clk = '1';
-    --end loop;
+    while not endfile(fd_in) loop
+      readline (fd_in, line_num);
+      read (line_num, value);
+      din     <= value;
+      
+      wait until clk = '1';
+    end loop;
 
--- teste de mensagem encurtada -> <k bytes
-    din <= "00000001";
-    wait until clk'event and clk = '1';
-    
-    din <= "00000001";
-    m_end <= '1';
-
-    wait until clk'event and clk = '1';
-    m_end <= '0';
     wait;
   end process;
 
