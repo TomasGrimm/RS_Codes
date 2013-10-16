@@ -3,25 +3,8 @@ use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 use work.ReedSolomon.all;
 
--- Chien search and Forney's algorithm module
--- This module has been designed following the architecture from Yuan's "A
--- Practical Guide to Error-Control Coding Using MATLAB" page 148.
-
-entity Chien_Forney is
-  port (
-    clock           : in std_logic;     -- clock signal
-    reset           : in std_logic;     -- reset signal
-    enable          : in std_logic;  -- enables this unit when the key equation is ready
-    error_locator   : in T_array;
-    error_evaluator : in T2less1_array;
-
-    done            : out std_logic;    -- signals when the search is done
-    is_root         : out std_logic;
-    processing      : out std_logic;
-    error_magnitude : out field_element);
-end entity;
-
-architecture Chien_Forney of Chien_Forney is
+-- Alterar a arquitetura para acomodar a correcao utilizando o E-DCME
+architecture CF_EDCME of Chien_Forney is
   component field_element_multiplier
     port (
       u : in  field_element;
@@ -46,13 +29,13 @@ architecture Chien_Forney of Chien_Forney is
   signal partial_error_locator : T_array;
   signal sigma_input           : T_array;
 
-  signal error_evaluator_out     : T2less1_array;
-  signal partial_error_evaluator : T2less1_array;
-  signal omega_input             : T2less1_array;
+  signal error_evaluator_out     : Tless1_array;
+  signal partial_error_evaluator : Tless1_array;
+  signal omega_input             : Tless1_array;
 
   signal counter : unsigned(T - 1 downto 0);
 
-  constant alpha_zero_array : T2less1_array := (others => alpha_zero);
+  constant alpha_zero_array : T_array := (others => alpha_zero);
 
 begin
   processing <= enable_operation;
@@ -62,8 +45,7 @@ begin
   -- alpha^0, the first iteration uses the variable sigma_alpha_zero.
   -- For the other n - 1 iterations, the variable sigma_alphas is used, so that
   -- every new iteration has the previous result multiplied by alpha.
-  sigma_input <= (others => (others => '0')) when reset = '1' else
-                 T_array(alpha_zero_array(0 to T)) when enable = '1' else
+  sigma_input <= alpha_zero_array when enable = '1' else
                  T_array(roots(0 to T));
 
   -- When the Forney algorithm starts, the first element to multiply the error
@@ -71,9 +53,8 @@ begin
   -- alpha^0, the first iteration uses the variable omega_alpha_zero.
   -- For the other n - 1 iterations, the variable omega_alphas is used, so that
   -- every new iteration has the previous result multiplied by alpha.
-  omega_input <= (others => (others => '0')) when reset = '1' else
-                 alpha_zero_array when enable = '1' else
-                 roots;
+  omega_input <= Tless1_array(alpha_zero_array(0 to T - 1)) when enable = '1' else
+                 Tless1_array(roots(0 to T - 1));
 
   -- The error locator polynomial has to be evaluated for each value of alpha
   error_locator_terms : for I in 0 to T generate
@@ -81,7 +62,7 @@ begin
   end generate;
 
   -- The error evaluator polynomial has to be evaluated for each value of alpha
-  error_evaluator_terms : for J in 0 to (T2 - 1) generate
+  error_evaluator_terms : for J in 0 to (T - 1) generate
     term : field_element_multiplier port map (omega_input(J), partial_error_evaluator(J), error_evaluator_out(J));
   end generate;
 
@@ -118,15 +99,7 @@ begin
                error_evaluator_out(4) xor
                error_evaluator_out(5) xor
                error_evaluator_out(6) xor
-               error_evaluator_out(7) xor
-               error_evaluator_out(8) xor
-               error_evaluator_out(9) xor
-               error_evaluator_out(10) xor
-               error_evaluator_out(11) xor
-               error_evaluator_out(12) xor
-               error_evaluator_out(13) xor
-               error_evaluator_out(14) xor
-               error_evaluator_out(15) when enable_operation = '1' else
+               error_evaluator_out(7) when enable_operation = '1' else
                (others => '0');
 
   -- To avoid the division operation, the result from the derivative is inverted.
@@ -178,8 +151,7 @@ begin
       if reset = '1' then
         partial_error_locator <= (others => (others => '0'));
       elsif enable = '1' then
-        --partial_error_locator <= error_locator;
-        partial_error_locator <= error_locator(5) & error_locator(6) & error_locator(7) & error_locator(8) & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros;
+        partial_error_locator <= error_locator;
       elsif enable_operation = '1' then
         partial_error_locator <= error_locator_out;
       end if;
@@ -195,10 +167,7 @@ begin
       if reset = '1' then
         partial_error_evaluator <= (others => (others => '0'));
       elsif enable = '1' then
-        -- pensar em uma forma de inicializar este polinomio corretamente de acordo
-        -- com a quantidade de deslocamentos necessarios, ou mudar o processamento do
-        -- algoritmo (somente se o riBM tambem apresenta este comportamento)
-        partial_error_evaluator <= error_evaluator(13) & error_evaluator(14) & error_evaluator(15) & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros & all_zeros;
+        partial_error_evaluator <= error_evaluator;
       elsif enable_operation = '1' then
         partial_error_evaluator <= error_evaluator_out;
       end if;
@@ -219,9 +188,3 @@ begin
     end if;
   end process;
 end architecture;
-
-
--- magnitude: 10000000
--- simbolo:   11010000
--- correcao:  01100000
--- correto:   01010000

@@ -5,9 +5,17 @@ vlib work
 vcom ../../Auxiliary/src/ReedSolomon.vhd
 vcom ../../Auxiliary/src/field_element_multiplier.vhd
 vcom ../../Auxiliary/src/inversion_table.vhd
+
 vcom ../src/Syndrome.vhd
-vcom ../src/Euclidean.vhd
-vcom ../src/Chien_Forney.vhd
+
+vcom ../src/KES/KES.vhd
+vcom ../src/KES/RiBM.vhd
+vcom ../src/KES/E_DCME.vhd
+
+vcom ../src/Chien_Forney/Chien_Forney.vhd
+vcom ../src/Chien_Forney/CF_RiBM.vhd
+vcom ../src/Chien_Forney/CF_EDCME.vhd
+
 vcom ../src/RS_decoder.vhd
 
 vcom ../tb/RS_decoder_tb.vhd

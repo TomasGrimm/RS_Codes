@@ -27,7 +27,7 @@ architecture RS_decoder of RS_decoder is
       syndrome : out T2less1_array);
   end component;
 
-  component Euclidean is
+  component KES is
     port (
       clock    : in std_logic;
       reset    : in std_logic;
@@ -36,7 +36,7 @@ architecture RS_decoder of RS_decoder is
 
       done            : out std_logic;
       error_locator   : out T_array;
-      error_evaluator : out T2less1_array);
+      error_evaluator : out Tless1_array);
   end component;
 
   component Chien_Forney is
@@ -45,7 +45,7 @@ architecture RS_decoder of RS_decoder is
       reset           : in std_logic;
       enable          : in std_logic;
       error_locator   : in T_array;
-      error_evaluator : in T2less1_array;
+      error_evaluator : in Tless1_array;
 
       done            : out std_logic;
       is_root         : out std_logic;
@@ -68,7 +68,7 @@ architecture RS_decoder of RS_decoder is
   signal syndrome_reg    : T2less1_array;
 
   signal bm_locator_output   : T_array;
-  signal bm_evaluator_output : T2less1_array;
+  signal bm_evaluator_output : Tless1_array;
 
   signal cf_magnitude : field_element;
   signal syndrome_in  : field_element;
@@ -76,6 +76,10 @@ architecture RS_decoder of RS_decoder is
   signal received : N_array;
 
   signal output_index : unsigned(T - 1 downto 0);
+
+  -- Specify which key equation algorithm will be used
+  for kes_module : KES use entity work.KES(RiBM);
+  for cf_module  : Chien_Forney use entity work.Chien_Forney(CF_RiBM);
   
 begin
   syndrome_module : Syndrome
@@ -87,7 +91,7 @@ begin
       done            => syndrome_done,
       syndrome        => syndrome_output);
 
-  bm_module : Euclidean
+  kes_module : KES
     port map (
       clock           => clock,
       reset           => reset,
