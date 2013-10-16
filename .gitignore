@@ -19,3 +19,6 @@ work/
 
 # IP Gen vhd output files
 src/C/IP Gen/src/*.vhd
+
+# IP Gen object files
+src/C/IP Gen/src/*.o

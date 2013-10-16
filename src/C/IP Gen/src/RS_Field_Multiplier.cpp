@@ -50,14 +50,14 @@ void Write_Multiplier(int primPoly)
   }
   else if (primPoly == 391) // x^8 + x^7 + x^2 + x + 1
   {
-    fd << "  w(0) <= d0 xor ;\n"
-          "  w(1) <= d1 xor ;\n"
-          "  w(2) <= d2 xor ;\n"
-          "  w(3) <= d3 xor ;\n"
-          "  w(4) <= d4 xor ;\n"
-          "  w(5) <= d5 xor ;\n"
-          "  w(6) <= d6 xor ;\n"
-          "  w(7) <= d7 xor ;\n";
+    fd << "  w(0) <= d0 xor d8 xor d9 xor d10 xor d11 xor d12 xor d13;\n"
+          "  w(1) <= d1 xor d8 xor d14;\n"
+          "  w(2) <= d2 xor d8 xor d10 xor d11 xor d12 xor d13;\n"
+          "  w(3) <= d3 xor d9 xor d11 xor d12 xor d13 xor d14;\n"
+          "  w(4) <= d4 xor d10 xor d12 xor d13 xor d14;\n"
+          "  w(5) <= d5 xor d11 xor d13 xor d14;\n"
+          "  w(6) <= d6 xor d12 xor d14;\n"
+          "  w(7) <= d7 xor d8 xor d9 xor d10 xor d11 xor d12;\n";
   }
 
   fd << "\n"

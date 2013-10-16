@@ -1,6 +1,7 @@
 #include <fstream>
 
-void Write_Syndrome() {
+void Write_Syndrome()
+{
   std::fstream fd;
 
   fd.open("RS_syndrome.vhd", std::fstream::out);
@@ -14,7 +15,6 @@ void Write_Syndrome() {
         "  port (\n"
         "    clock           : in std_logic;\n"
         "    reset           : in std_logic;\n"
-        "    enable          : in std_logic;\n"
         "    start           : in std_logic;\n"
         "    received_vector : in field_element;\n"
         "\n"
@@ -30,25 +30,41 @@ void Write_Syndrome() {
         "      w : out field_element);\n"
         "  end component;\n"
         "\n"
+        "  signal enable_operation : std_logic;\n"
+        "\n"
         "  signal registers       : T2less1_array;\n"
         "  signal multiplications : T2less1_array;\n"
         "\n"
         "  signal counter : unsigned(T - 1 downto 0);\n"
-        "\n"
+        "  \n"
         "begin\n"
         "  multipliers : for I in 0 to T2 - 1 generate\n"
         "    synd : field_element_multiplier port map (registers(I), roots(I), multiplications(I));\n"
         "  end generate multipliers;\n"
         "\n"
         "  -----------------------------------------------------------------------------\n"
+        "  -- Enable operation\n"
+        "  -----------------------------------------------------------------------------\n"
+        "  process(clock)\n"
+        "  begin\n"
+        "    if clock'event and clock = '1' then\n"
+        "      if reset = '1' or counter = N_LENGTH then\n"
+        "        enable_operation <= '0';\n"
+        "      elsif start = '1' then\n"
+        "        enable_operation <= '1';\n"
+        "      end if;\n"
+        "    end if;\n"
+        "  end process;\n"
+        "  \n"
+        "  -----------------------------------------------------------------------------\n"
         "  -- Counter to control the syndrome calculation\n"
         "  -----------------------------------------------------------------------------\n"
         "  process(clock)\n"
         "  begin\n"
         "    if clock'event and clock = '1' then\n"
-        "      if reset = '1' or enable = '0' then\n"
+        "      if reset = '1' or enable_operation = '0' then\n"
         "        counter <= (others => '0');\n"
-        "      elsif enable = '1' then\n"
+        "      elsif enable_operation = '1' then\n"
         "        counter <= counter + 1;\n"
         "      end if;\n"
         "    end if;\n"
@@ -62,7 +78,7 @@ void Write_Syndrome() {
         "    if clock'event and clock = '1' then\n"
         "      if reset = '1' or start = '1' then\n"
         "        registers <= (others => (others => '0'));\n"
-        "      elsif enable = '1' then\n"
+        "      elsif enable_operation = '1' then\n"
         "        for i in 0 to T2 - 1 loop\n"
         "          registers(i) <= received_vector xor multiplications(i);\n"
         "        end loop;\n"
@@ -86,7 +102,7 @@ void Write_Syndrome() {
         "  -- Output syndromes\n"
         "  -----------------------------------------------------------------------------\n"
         "  syndrome <= registers;\n"
-        "end architecture;\n";
+    "end architecture;\n";
 
   fd.close();
 }

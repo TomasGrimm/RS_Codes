@@ -541,7 +541,7 @@ void Write_Inversion_Table(int primPoly)
 
   fd << "begin\n"
         "  output <= inversion(to_integer(unsigned(input)));\n"
-    "end architecture;\n";
+        "end architecture;\n";
 
   fd.close();
 }
