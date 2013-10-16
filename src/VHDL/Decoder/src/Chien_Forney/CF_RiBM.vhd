@@ -19,7 +19,11 @@ architecture CF_RiBM of Chien_Forney is
 
   signal enable_operation : std_logic;
 
+  signal beta           : field_element;
+  signal new_beta       : field_element;
+  signal omega_scaled   : field_element;
   signal omega_sum      : field_element;
+  signal scaler_input   : field_element;
   signal sigma_sum      : field_element;
   signal sigma_derived  : field_element;
   signal sigma_inverted : field_element;
@@ -104,10 +108,17 @@ begin
   -- To avoid the division operation, the result from the derivative is inverted.
   inverter : inversion_table port map (sigma_derived, sigma_inverted);
 
+  scaler_input <= alpha_zero when enable = '1' else
+                  "01001100";           -- alpha^(2*t)
+
+  beta_multiplier : field_element_multiplier port map (beta, scaler_input, new_beta);
+
+  scaler : field_element_multiplier port map (omega_sum, new_beta, omega_scaled);
+
   -- Finally, the error magnitude is calculated as the multiplication of the
   -- scaled version of the result from the error evaluator polynomial by the
   -- derivative of the error locator polynomial.
-  magnitude_calculation : field_element_multiplier port map (omega_sum, sigma_inverted, error_magnitude);
+  magnitude_calculation : field_element_multiplier port map (omega_scaled, sigma_inverted, error_magnitude);
 
   -----------------------------------------------------------------------------
   -- Enable operation
@@ -169,6 +180,22 @@ begin
         partial_error_evaluator <= error_evaluator;
       elsif enable_operation = '1' then
         partial_error_evaluator <= error_evaluator_out;
+      end if;
+    end if;
+  end process;
+
+  -----------------------------------------------------------------------------
+  -- Control the omega multiplier
+  -----------------------------------------------------------------------------
+  process(clock)
+  begin
+    if clock'event and clock = '1' then
+      if reset = '1' then
+        beta <= (others => '0');
+      elsif enable = '1' then
+        beta <= alpha_zero;
+      elsif enable_operation = '1' then
+        beta <= new_beta;
       end if;
     end if;
   end process;

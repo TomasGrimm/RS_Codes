@@ -18,22 +18,20 @@ end entity;
 architecture RS_decoder of RS_decoder is
   component Syndrome is
     port (
-      clock           : in std_logic;
-      reset           : in std_logic;
-      start           : in std_logic;
-      received_vector : in field_element;
-
-      done     : out std_logic;
-      syndrome : out T2less1_array);
+      clock           : in  std_logic;
+      reset           : in  std_logic;
+      start           : in  std_logic;
+      received_vector : in  field_element;
+      done            : out std_logic;
+      syndrome        : out T2less1_array);
   end component;
 
   component KES is
     port (
-      clock    : in std_logic;
-      reset    : in std_logic;
-      enable   : in std_logic;
-      syndrome : in T2less1_array;
-
+      clock           : in  std_logic;
+      reset           : in  std_logic;
+      enable          : in  std_logic;
+      syndrome        : in  T2less1_array;
       done            : out std_logic;
       error_locator   : out T_array;
       error_evaluator : out Tless1_array);
@@ -41,12 +39,11 @@ architecture RS_decoder of RS_decoder is
 
   component Chien_Forney is
     port (
-      clock           : in std_logic;
-      reset           : in std_logic;
-      enable          : in std_logic;
-      error_locator   : in T_array;
-      error_evaluator : in Tless1_array;
-
+      clock           : in  std_logic;
+      reset           : in  std_logic;
+      enable          : in  std_logic;
+      error_locator   : in  T_array;
+      error_evaluator : in  Tless1_array;
       done            : out std_logic;
       is_root         : out std_logic;
       processing      : out std_logic;

@@ -3,19 +3,6 @@ use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 use work.ReedSolomon.all;
 
---entity Euclidean is
---  port (
---    clock    : in std_logic;
---    reset    : in std_logic;
---    enable   : in std_logic;
---    syndrome : in T2less1_array;
-
---    done            : out std_logic;
---    error_locator   : out T_array;
---    error_evaluator : out T2less1_array);
---end Euclidean;
-
---architecture Euclidean of Euclidean is
 architecture E_DCME of KES is
   component field_element_multiplier
     port (
@@ -223,6 +210,6 @@ begin
   -- Output polynomials
   -----------------------------------------------------------------------------
   error_locator   <= lambda;
-  error_evaluator <= R;
+  error_evaluator <= Tless1_array(R(T to T2 - 1));
 
 end architecture;

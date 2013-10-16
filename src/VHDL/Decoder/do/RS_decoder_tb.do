@@ -11,6 +11,7 @@ vcom ../src/Syndrome.vhd
 vcom ../src/KES/KES.vhd
 vcom ../src/KES/RiBM.vhd
 vcom ../src/KES/E_DCME.vhd
+#vcom ../src/KES/S_DCME.vhd
 
 vcom ../src/Chien_Forney/Chien_Forney.vhd
 vcom ../src/Chien_Forney/CF_RiBM.vhd
@@ -50,8 +51,8 @@ add wave -divider
 
 #add wave  /rs_decoder_tb/decoder/*
 #add wave /rs_decoder_tb/decoder/syndrome_module/*
-add wave /rs_decoder_tb/decoder/bm_module/*
-#add wave /rs_decoder_tb/decoder/cf_module/*
+#add wave /rs_decoder_tb/decoder/kes_module/*
+add wave /rs_decoder_tb/decoder/cf_module/*
 
 run 6000 ns
 wave zoom full
