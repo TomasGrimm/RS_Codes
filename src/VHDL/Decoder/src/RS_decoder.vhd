@@ -54,7 +54,6 @@ architecture RS_decoder of RS_decoder is
   signal cf_done              : std_logic;
   signal cf_processing        : std_logic;
   signal cf_root              : std_logic;
-  signal decoding_done        : std_logic;
   signal enable_bm            : std_logic;
   signal received_is_codeword : std_logic;
   signal start_syndrome       : std_logic;
@@ -72,11 +71,11 @@ architecture RS_decoder of RS_decoder is
 
   signal received : N_array;
 
-  signal output_index : unsigned(T - 1 downto 0);
+  signal output_index : unsigned(SYMBOL_LENGTH - 1 downto 0);
 
   -- Specify which key equation algorithm will be used
-  for kes_module : KES use entity work.KES(RiBM);
-  for cf_module  : Chien_Forney use entity work.Chien_Forney(CF_RiBM);
+  for kes_module : KES use entity work.KES(RiBM); --RiBM   E_DCME
+  for cf_module  : Chien_Forney use entity work.Chien_Forney(CF_RiBM); --CF_RiBM   CF_EDCME
   
 begin
   syndrome_module : Syndrome
@@ -129,7 +128,7 @@ begin
   process(clock)
   begin
     if clock'event and clock = '1' then
-      if reset = '1' or decoding_done = '1' then
+      if reset = '1' then --or decoding_done = '1' then
         syndrome_reg <= (others => (others => '0'));
       elsif syndrome_done = '1' then
         syndrome_reg <= syndrome_output;

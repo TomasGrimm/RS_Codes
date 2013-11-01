@@ -5,19 +5,6 @@ use work.ReedSolomon.all;
 
 -- Implementation of the invertionless Berlekamp-Massey algorithm
 
---entity BerlekampMassey is
---  port (
---    clock    : in std_logic;
---    reset    : in std_logic;
---    enable   : in std_logic;
---    syndrome : in T2less1_array;
-
---    done            : out std_logic;
---    error_locator   : out T_array;
---    error_evaluator : out Tless1_array);
---end entity;
-
---architecture BerlekampMassey of BerlekampMassey is
 architecture RiBM of KES is
   component field_element_multiplier is
     port (
@@ -33,17 +20,17 @@ architecture RiBM of KES is
 
   signal gamma : field_element;
 
-  signal gamma_sigma_out : T3_array;
+  signal gamma_sigma_out : T3less1_array;
+  
   signal sigma           : T3_array;
   signal sigma_theta_out : T3_array;
   signal theta           : T3_array;
   
 begin
-  gamma_mult_sigma : for I in 1 to T3 generate
-    gamma_sigma_term : field_element_multiplier port map (gamma, sigma(I), gamma_sigma_out(I));
+  gamma_mult_sigma : for I in 0 to T3 - 1 generate
+    gamma_sigma_term : field_element_multiplier port map (gamma, sigma(I + 1), gamma_sigma_out(I));
   end generate gamma_mult_sigma;
   
-
   sigma_mult_theta : for J in 0 to T3 generate
     sigma_theta_term : field_element_multiplier port map (sigma(0), theta(J), sigma_theta_out(J));
   end generate sigma_mult_theta;
@@ -105,7 +92,7 @@ begin
                               syndrome(15);
       elsif enable_operation = '1' then
         for i in 0 to T3 - 1 loop
-          sigma(i) <= gamma_sigma_out(i + 1) xor sigma_theta_out(i);
+          sigma(i) <= gamma_sigma_out(i) xor sigma_theta_out(i);
         end loop;
         sigma(T3) <= sigma_theta_out(T3);
       else
@@ -179,7 +166,7 @@ begin
         k <= (others => '0');
       elsif enable_operation = '1' then
         if sigma(0) /= all_zeros and k >= 0 then
-          k <= k - 1;
+          k <= -k - 1;
         else
           k <= k + 1;
         end if;
@@ -204,23 +191,7 @@ begin
   -----------------------------------------------------------------------------
   -- Set output signals
   -----------------------------------------------------------------------------
-  error_locator <= sigma(8) &
-                   sigma(9) &
-                   sigma(10) &
-                   sigma(11) &
-                   sigma(12) &
-                   sigma(13) &
-                   sigma(14) &
-                   sigma(15) &
-                   sigma(16);
-
-  error_evaluator <= sigma(0) &
-                     sigma(1) &
-                     sigma(2) &
-                     sigma(3) &
-                     sigma(4) &
-                     sigma(5) &
-                     sigma(6) &
-                     sigma(7);
+  error_locator <= T_array(sigma(8 to 16));
+  error_evaluator <= Tless1_array(sigma(0 to 7));
   
 end architecture;

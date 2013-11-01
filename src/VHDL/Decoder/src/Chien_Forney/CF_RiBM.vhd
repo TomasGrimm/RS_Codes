@@ -36,7 +36,7 @@ architecture CF_RiBM of Chien_Forney is
   signal partial_error_evaluator : Tless1_array;
   signal omega_input             : Tless1_array;
 
-  signal counter : unsigned(T - 1 downto 0);
+  signal counter : unsigned(SYMBOL_LENGTH - 1 downto 0);
 
   constant alpha_zero_array : T_array := (others => alpha_zero);
 

@@ -17,11 +17,12 @@ package ReedSolomon is
 
   type N_array is array (0 to N_LENGTH - 1) of field_element;
   type T_array is array (0 to T) of field_element;
-  type Tless1_array is array (0 to T - 1) of field_element;
   type T2_array is array (0 to T2) of field_element;
-  type T2less1_array is array (0 to T2 - 1) of field_element;
   type T3_array is array (0 to T3) of field_element;
-
+  type Tless1_array is array (0 to T - 1) of field_element;
+  type T2less1_array is array (0 to T2 - 1) of field_element;
+  type T3less1_array is array (0 to T3 - 1) of field_element;
+  
   constant gen_poly : T2less1_array;    -- generator polynomial
   constant roots    : T2less1_array;    -- generator polynomial roots
 end package ReedSolomon;

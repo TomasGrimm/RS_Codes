@@ -11,7 +11,7 @@ vcom ../src/Syndrome.vhd
 vcom ../src/KES/KES.vhd
 vcom ../src/KES/RiBM.vhd
 vcom ../src/KES/E_DCME.vhd
-#vcom ../src/KES/S_DCME.vhd
+#####vcom ../src/KES/S_DCME.vhd
 
 vcom ../src/Chien_Forney/Chien_Forney.vhd
 vcom ../src/Chien_Forney/CF_RiBM.vhd
@@ -43,18 +43,16 @@ add wave -label syndrome_output /RS_decoder_tb/decoder/syndrome_reg
 add wave -label output_index /RS_decoder_tb/decoder/output_index
 #add wave -label cf_index /RS_decoder_tb/decoder/cf_index
 #add wave -label magnitude /RS_decoder_tb/decoder/cf_magnitude
-#add wave -label root /RS_decoder_tb/decoder/cf_root
-#add wave -label processing /RS_decoder_tb/decoder/cf_processing
+add wave -label root /RS_decoder_tb/decoder/cf_root
+add wave -label processing /RS_decoder_tb/decoder/cf_processing
 add wave -label received_is_codeword /RS_decoder_tb/decoder/received_is_codeword
 
 add wave -divider
 
-#add wave  /rs_decoder_tb/decoder/*
+#add wave /rs_decoder_tb/decoder/*
 #add wave /rs_decoder_tb/decoder/syndrome_module/*
-#add wave /rs_decoder_tb/decoder/kes_module/*
-add wave /rs_decoder_tb/decoder/cf_module/*
+add wave /rs_decoder_tb/decoder/kes_module/*
+#add wave /rs_decoder_tb/decoder/cf_module/*
 
-run 6000 ns
+run 12000 ns
 wave zoom full
-
-#quit -f

@@ -36,7 +36,7 @@ architecture Syndrome of Syndrome is
   signal registers       : T2less1_array;
   signal multiplications : T2less1_array;
 
-  signal counter : unsigned(T - 1 downto 0);
+  signal counter : unsigned(SYMBOL_LENGTH - 1 downto 0);
   
 begin
   multipliers : for I in 0 to T2 - 1 generate

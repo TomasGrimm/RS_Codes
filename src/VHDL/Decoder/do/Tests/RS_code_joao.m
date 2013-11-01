@@ -1,115 +1,171 @@
+%=================================================================
+% LIMPEZA
+%=================================================================
 clc
 clear
+
+%=================================================================
+% CONFIGURAÇOES GERAIS
+%=================================================================
 load('RS.mat')
-qtidadeacerto=0;
-for repet = 1:2
 
+warning('off', 'HDLLink:HDLSimScript:UnknownHdlSimVersion');
+warning('off', 'HDLLink:HDLSimScript:UnsupportedModelSim');
 
-% criacao da mensagem
-message = randi([0 1],(k*m), 1); %k palavras de m bits, vetor coluna unico
+iterations = 1;
+messages = 2;
+test_coder = 0;
+test_decoder = 1;
 
-%fd = fopen('message.txt', 'w');
+erro = 0;
+email = 'tomas.grimm@gmail.com';
+username = 'tomas.grimm@gmail.com';
+server = 'smtp.gmail.com';
+password = '';
+config_email(email, username, server, password);
 
-%for i = 1:size(message, 1)
-%    fprintf(fd, '%d', message(i, 1));
-    
-%    if (mod(i, m) == 0)
-%        fprintf(fd, '\n');
-%    end
-%end
+qtidade_acerto_CODER = 0;
+qtidade_acerto_DECODER = 0;
 
-%fclose(fd);
+% tempo necessario para rodar vsim
+tempo_de_pausa = 2;
 
-% Codificacao
-codeword = step(rsEnc, message);
+%=================================================================
+% SIMULACOES
+%=================================================================
+for i = 1:iterations
+    for j = 1:messages
+        %=================================================================
+        % CRIAÇAO DA MENSAGEM
+        %=================================================================
+        % k palavras de m bits, vetor coluna unico
+        message = randi([0 1],(k*m), 1);
+        
+        if test_coder == 1
+            print_file(message, ['message' num2str(j) '.txt'], m);
+        end
+        
+        %=================================================================
+        % CODIFICAÇAO
+        %=================================================================
+        codeword = step(rsEnc, message);
+        print_file(codeword, ['codeword_golden' num2str(j) '.txt'], m);
+        
+        %=================================================================
+        % INSERÇAO DE ERROS
+        %=================================================================
+        if test_decoder == 1
+            received = codeword;
+            errors = randi([0 8]);
+            r = randperm(n);
+            positions = r(1:errors);
 
-% fd = fopen('codeword_golden.txt', 'w'); %escreve msg codificada
-% 
-% for i = 1:size(codeword, 1)
-%     fprintf(fd, '%d', codeword(i, 1));
-%     
-%     if (mod(i, m) == 0)
-%         fprintf(fd, '\n');
-%     end
-% end
-% 
-% fclose(fd);
+            for l = 1:errors
+                pos = positions(l) * m;
+                element = de2bi(randi([1 n]), m, 'left-msb');
+                
+                for o = 0:m - 1
+                    received(pos - o) = element(m - o);
+                end
+            end
 
-% Insercao de erro
-errors =  randi([0 8]); %
-
-received = codeword;
-
-for i = 1:errors
-    position = randi([1 n]) * m;
-    element = de2bi(randi([1 n]), m, 'left-msb');
-    
-    received(position) = element(8);
-    received(position - 1) = element(7);
-    received(position - 2) = element(6);
-    received(position - 3) = element(5);
-    received(position - 4) = element(4);
-    received(position - 5) = element(3);
-    received(position - 6) = element(2);
-    received(position - 7) = element(1);
-end
-
-fd = fopen('received.txt', 'w'); %escreve msg codificada +erros
-
-for i = 1:size(received, 1)
-    fprintf(fd, '%d', received(i, 1));
-    
-    if (mod(i, m) == 0)
-        fprintf(fd, '\n');
+            print_file(received, ['received' num2str(j) '.txt'], m);
+        end
+        
+        %=================================================================
+        % DECODIFICAÇAO
+        %=================================================================
+        if test_decoder == 1
+            [estimated errs] = step(rsDec, received);
+        end
     end
-end
-
-fclose(fd);
-
-% Decodificacao
-[estimated errs] = step(rsDec, received); %decodifica received
-
-% fd = fopen('estimated_golden.txt', 'w');
-% 
-% for i = 1:size(estimated, 1)
-%     fprintf(fd, '%d', estimated(i, 1));
-%     
-%     if (mod(i, m) == 0)
-%         fprintf(fd, '\n');
-%     end
-% end
-% 
-% fclose(fd);
-
-%comparacao
-fileID = -1; 
-
-delete estimated_vhdl.txt
-vsim('runmode','Batch','rundir','C:\Jo�o\linux\RS\V1.4deco\Decoder\do', 'tclstart', 'do RS_decoder_tb.do'); % '/mnt/linux/RS/V1.5deco/Decoder/tb'
-
-pause(6)%espera
-
-while fileID < 0 %garantia para pegar o ID certo, espera vsim gerar arquvivo 
-    fileID = fopen('estimated_vhdl.txt');
-end
-
-estimated_word_vhdl = zeros(m*k,1);
-C = fgetl(fileID);%a primeira eh lixo, descartando ela
-
-
-for i = 1:k
-    C = fgetl(fileID);
-    for j = 1:m
-        estimated_word_vhdl(i*m-8+j,1) = C(j)-48;
+    
+    %=================================================================
+    % SIMULAÇOES
+    %=================================================================
+    if test_coder == 1
+        delete('codeword_vhdl*.txt');
+        vsim('runmode','Batch','rundir', '../', 'tclstart', 'do RS_coder_tb.do');
+        pause(tempo_de_pausa)
     end
+    
+    if test_decoder == 1
+        delete('estimated_vhdl*.txt');
+        vsim('runmode','Batch','rundir', '../', 'tclstart', 'do RS_decoder_tb.do'); %'/mnt/linux/RS/V2.0deco/Decoder/do'
+        pause(tempo_de_pausa)
+    end
+    
+    for j = 1:messages
+        %=================================================================
+        % COMPARAÇAO CODIFICADOR
+        %=================================================================
+        if test_coder == 1
+            fid = fopen(['codeword_vhdl' num2str(j) '.txt'], 'r');
+            fgetl(fid);
+            buffer = fread(fid, Inf);
+            fclose(fid);
+            
+            fid = fopen(['codeword_vhdl' num2str(j) '.txt'], 'w');
+            fwrite(fid, buffer);
+            fclose(fid);
+            
+            file_1 = javaObject('java.io.File', ['codeword_golden' num2str(j) '.txt']);
+            file_2 = javaObject('java.io.File', ['codeword_vhdl' num2str(j) '.txt']);
+            is_equal = javaMethod('contentEquals','org.apache.commons.io.FileUtils', file_1, file_2);
+
+            qtidade_acerto_CODER = is_equal + qtidade_acerto_CODER;
+
+            if is_equal == 0
+                erro = 1;
+                sendmail(email, 'Matlab - Erro', ['Erro na mensagem ' num2str(j) ' durante a codificação. Iteração: ' num2str(i)]);
+                break
+            end
+        end
+        
+        %=================================================================
+        % COMPARAÇAO DECODIFICADOR
+        %=================================================================
+        if test_decoder == 1
+            fid = fopen(['estimated_vhdl' num2str(j) '.txt'], 'r');
+            fgetl(fid);
+            buffer = fread(fid, Inf);
+            fclose(fid);
+            
+            fid = fopen(['estimated_vhdl' num2str(j) '.txt'], 'w');
+            fwrite(fid, buffer);
+            fclose(fid);
+            
+            file_1 = javaObject('java.io.File', ['codeword_golden' num2str(j) '.txt']);
+            file_2 = javaObject('java.io.File', ['estimated_vhdl' num2str(j) '.txt']);
+            is_equal = javaMethod('contentEquals','org.apache.commons.io.FileUtils', file_1, file_2);
+
+            qtidade_acerto_DECODER = is_equal + qtidade_acerto_DECODER;
+
+            if is_equal == 0
+                erro = 1;
+                sendmail(email, 'Matlab - Erro', ['Erro na mensagem ' num2str(j) ' durante a decodificação. Iteração: ' num2str(i)]);
+                break
+            end
+        end
+    end
+    
+    %=================================================================
+    % AUDITORIA
+    %=================================================================
+    if test_coder == 1
+        qtidade_acerto_CODER
+    end
+    
+    if test_decoder == 1
+        qtidade_acerto_DECODER
+    end
+    
+    i
 end
 
-fclose(fileID);
-
-clear ans
-
-certo=all(estimated_word_vhdl==estimated);
-qtidadeacerto = certo + qtidadeacerto;
-repet
+if (erro == 0)
+    sendmail(email, 'Matlab - Completado', 'Simulação executada com sucesso.');
+    delete('codeword_golden*.txt');
+    delete('received*.txt');
+    delete('estimated_vhdl*.txt');
 end
-qtidadeacerto
